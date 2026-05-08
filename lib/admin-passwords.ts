@@ -1,11 +1,6 @@
 import crypto from "crypto";
 import { UserRole } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { normalizePhone } from "@/lib/phone";
-import { findOrCreateUserByPhone } from "@/lib/auth";
-const PRIMARY_ADMIN_PHONE = normalizePhone(process.env.ADMIN_PHONE || "+79959178862");
-const PRIMARY_ADMIN_EMAIL = (process.env.ADMIN_EMAIL || "mackacrvena@gmail.com").trim().toLowerCase();
-const PRIMARY_ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "krookiesadmin";
 
 function validatePassword(password: string) {
   if (password.trim().length < 8) {
@@ -45,65 +40,28 @@ export async function removeAdminPassword(userId: string) {
   });
 }
 
-async function ensurePrimaryAdminCredential(user: {
-  id: string;
-  phone: string;
-  role: UserRole;
-  passwordHash: string | null;
-}) {
-  if (user.role !== UserRole.admin) return;
-  if (normalizePhone(user.phone) !== PRIMARY_ADMIN_PHONE) return;
-  if (
-    user.passwordHash &&
-    verifyPassword(PRIMARY_ADMIN_PASSWORD, user.passwordHash)
-  ) {
-    return;
-  }
+export async function authenticateAdminByEmail(email: string, password: string) {
+  const normalizedEmail = email.trim().toLowerCase();
+  if (!normalizedEmail) throw new Error("email_required");
+  if (!password) throw new Error("password_required");
 
-  await prisma.user.update({
-    where: { id: user.id },
-    data: { passwordHash: hashPassword(PRIMARY_ADMIN_PASSWORD) },
-  });
-}
-
-async function findAdminForStaffLogin(normalizedEmail: string) {
-  if (normalizedEmail === PRIMARY_ADMIN_EMAIL) {
-    const { user } = await findOrCreateUserByPhone(PRIMARY_ADMIN_PHONE);
-    if (user.role === UserRole.admin) {
-      return user;
-    }
-  }
-
-  return prisma.user.findFirst({
+  const user = await prisma.user.findFirst({
     where: {
       email: normalizedEmail,
       role: UserRole.admin,
     },
     orderBy: { createdAt: "asc" },
   });
-}
-
-export async function authenticateAdminByEmail(email: string, password: string) {
-  const normalizedEmail = email.trim().toLowerCase();
-  if (!normalizedEmail) throw new Error("email_required");
-  if (!password) throw new Error("password_required");
-
-  const user = await findAdminForStaffLogin(normalizedEmail);
 
   if (!user || user.role !== UserRole.admin) {
     throw new Error("invalid_staff_credentials");
   }
 
-  await ensurePrimaryAdminCredential(user);
-  const adminUser = await prisma.user.findUnique({
-    where: { id: user.id },
-  });
-
-  if (!adminUser?.passwordHash || !verifyPassword(password, adminUser.passwordHash)) {
+  if (!user.passwordHash || !verifyPassword(password, user.passwordHash)) {
     throw new Error("invalid_staff_credentials");
   }
 
-  return adminUser;
+  return user;
 }
 
 export async function changeAdminPassword(userId: string, currentPassword: string, nextPassword: string) {
@@ -118,12 +76,7 @@ export async function changeAdminPassword(userId: string, currentPassword: strin
     throw new Error("forbidden");
   }
 
-  await ensurePrimaryAdminCredential(user);
-  const adminUser = await prisma.user.findUnique({
-    where: { id: userId },
-  });
-
-  if (!adminUser?.passwordHash || !verifyPassword(currentPassword, adminUser.passwordHash)) {
+  if (!user.passwordHash || !verifyPassword(currentPassword, user.passwordHash)) {
     throw new Error("invalid_current_password");
   }
 
