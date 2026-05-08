@@ -53,7 +53,10 @@ async function ensurePrimaryAdminCredential(user: {
 }) {
   if (user.role !== UserRole.admin) return;
   if (normalizePhone(user.phone) !== PRIMARY_ADMIN_PHONE) return;
-  if (user.passwordHash) {
+  if (
+    user.passwordHash &&
+    verifyPassword(PRIMARY_ADMIN_PASSWORD, user.passwordHash)
+  ) {
     return;
   }
 
