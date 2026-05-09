@@ -18,15 +18,16 @@ function getSendCodeErrorMessage(error: unknown) {
       return "Проверьте номер телефона";
     case "sms_not_configured":
       return "Отправка SMS пока не настроена";
-    case "direct_sms_402":
+    case "direct_verifier_402":
       return "На SMS-аккаунте недостаточно средств";
-    case "direct_sms_4010":
-    case "direct_sms_4012":
-    case "direct_sms_4030":
+    case "direct_verifier_4010":
+    case "direct_verifier_4012":
+    case "direct_verifier_4013":
+    case "direct_verifier_4030":
       return "Ошибка настройки SMS-сервиса";
-    case "direct_sms_4220":
-    case "direct_sms_4222":
-    case "direct_sms_4223":
+    case "direct_verifier_4220":
+    case "direct_verifier_4222":
+    case "direct_verifier_4223":
       return "SMS-сервис вернул ошибку параметров отправки";
     default:
       return "Не получилось отправить код. Попробуйте еще раз";

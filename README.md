@@ -88,8 +88,8 @@ SUPABASE_STORAGE_BUCKET="product-images"
 YOOKASSA_SHOP_ID=""
 YOOKASSA_SECRET_KEY=""
 YOOKASSA_WEBHOOK_SECRET=""
-DIRECT_SMS_API_KEY=""
-DIRECT_SMS_SENDER_NAME="sms_promo"
+DIRECT_VERIFIER_API_KEY=""
+DIRECT_VERIFIER_GATEWAY_ID=""
 OTP_MOCK_CODE=""
 TELEGRAM_BOT_TOKEN=""
 TELEGRAM_WEBHOOK_SECRET=""
@@ -102,7 +102,7 @@ TELEGRAM_WEBHOOK_SECRET=""
 - Для Vercel + Prisma + Supabase использовать `DATABASE_URL` в transaction mode `:6543` с `?pgbouncer=true&connection_limit=1`
 - Для Prisma CLI (`db push`, `seed`) использовать `DIRECT_URL` на direct connection `db....supabase.co:5432`
 - Подключить реальные ключи ЮKassa
-- Добавить в env `DIRECT_SMS_API_KEY` и `DIRECT_SMS_SENDER_NAME`
+- Добавить в env `DIRECT_VERIFIER_API_KEY` и `DIRECT_VERIFIER_GATEWAY_ID`
 - Для тестовой авторизации без реальной SMS можно временно указать `OTP_MOCK_CODE="1111"`
 - Добавить в env `TELEGRAM_BOT_TOKEN` и `TELEGRAM_WEBHOOK_SECRET`
 - Указать webhook в кабинете ЮKassa: `https://ваш-домен.ru/api/payment/webhook`
@@ -120,7 +120,7 @@ TELEGRAM_WEBHOOK_SECRET=""
 
 - метод: `POST https://direct.i-dgtl.ru/api/v1/message`
 - авторизация: `Authorization: Basic {TOKEN_1}`
-- для тестов без собственного sender допускается `senderName="sms_promo"`
+- для Direct verifier нужен отдельный ключ типа `TOKEN_3` и `gatewayId` модуля верификации
 
 По документации:
 - нужен API-ключ типа `{TOKEN_1}` для работы с сообщениями

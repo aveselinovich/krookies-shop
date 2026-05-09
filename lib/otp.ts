@@ -1,6 +1,7 @@
 import { OtpPurpose } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { normalizePhone, validatePhone } from "@/lib/phone";
+import { checkVerificationCode, isSmsConfigured, sendVerificationCode } from "@/lib/sms";
 
 const OTP_TTL_MINUTES = 10;
 const DEV_OTP_CODE = "1111";
@@ -24,6 +25,18 @@ export function generateOtpCode() {
 export async function createOtpCode(phone: string) {
   const normalizedPhone = normalizePhone(phone);
   if (!validatePhone(normalizedPhone)) throw new Error("invalid_phone");
+
+  if (!isMockOtpEnabled() && isSmsConfigured()) {
+    const { uuid } = await sendVerificationCode({ phone: normalizedPhone });
+    const expiresAt = new Date();
+    expiresAt.setMinutes(expiresAt.getMinutes() + OTP_TTL_MINUTES);
+
+    const otpCode = await prisma.otpCode.create({
+      data: { phone: normalizedPhone, code: uuid, purpose: OtpPurpose.login, expiresAt },
+    });
+
+    return { id: otpCode.id, phone: normalizedPhone, code: null, expiresAt };
+  }
 
   const code = generateOtpCode();
   const expiresAt = new Date();
@@ -55,6 +68,36 @@ export async function verifyOtpCode(phone: string, code: string) {
 
   // Local/dev fallback without configured mock env.
   if (process.env.NODE_ENV !== "production" && normalizedCode === DEV_OTP_CODE) {
+    return { phone: normalizedPhone };
+  }
+
+  if (!isMockOtpEnabled() && isSmsConfigured()) {
+    const otpCode = await prisma.otpCode.findFirst({
+      where: {
+        phone: normalizedPhone,
+        purpose: OtpPurpose.login,
+        consumedAt: null,
+        expiresAt: { gt: new Date() },
+      },
+      orderBy: { createdAt: "desc" },
+    });
+
+    if (!otpCode) throw new Error("invalid_or_expired_code");
+
+    try {
+      await checkVerificationCode({ uuid: otpCode.code, code: normalizedCode });
+    } catch (error) {
+      if (error instanceof Error && error.message.startsWith("direct_verifier_")) {
+        throw new Error("invalid_or_expired_code");
+      }
+      throw error;
+    }
+
+    await prisma.otpCode.update({
+      where: { id: otpCode.id },
+      data: { consumedAt: new Date() },
+    });
+
     return { phone: normalizedPhone };
   }
 

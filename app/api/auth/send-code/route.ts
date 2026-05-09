@@ -1,34 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createOtpCode, deleteOtpCode, isMockOtpEnabled } from "@/lib/otp";
-import { isSmsConfigured, sendSms } from "@/lib/sms";
+import { createOtpCode, isMockOtpEnabled } from "@/lib/otp";
+import { isSmsConfigured } from "@/lib/sms";
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const result = await createOtpCode(body.phone);
     const isMockMode = isMockOtpEnabled();
-    const shouldSendSms = isSmsConfigured();
 
-    if (!isMockMode && !shouldSendSms && process.env.NODE_ENV === "production") {
-      if (result.id) {
-        await deleteOtpCode(result.id).catch(() => null);
-      }
+    if (!isMockMode && !isSmsConfigured() && process.env.NODE_ENV === "production") {
       throw new Error("sms_not_configured");
     }
 
-    if (!isMockMode && shouldSendSms) {
-      try {
-        await sendSms({
-          phone: result.phone,
-          message: `KROOKIES: ваш код входа ${result.code}`,
-        });
-      } catch (error) {
-        if (result.id) {
-          await deleteOtpCode(result.id).catch(() => null);
-        }
-        throw error;
-      }
-    }
+    const result = await createOtpCode(body.phone);
 
     return NextResponse.json({ ok: true, phone: result.phone });
   } catch (error) {
