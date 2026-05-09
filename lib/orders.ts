@@ -118,24 +118,26 @@ export async function createOrder(input: CreateOrderInput) {
     include: { items: true },
   });
 
-  notifyTelegramSubscribersAboutOrder({
-    id: order.id,
-    orderNumber: order.orderNumber,
-    customerName,
-    customerPhone,
-    customerEmail,
-    total: order.total,
-    deliveryCity: order.deliveryCity,
-    deliveryStreet: order.deliveryStreet,
-    deliveryHouse: order.deliveryHouse,
-    deliveryApartment: order.deliveryApartment,
-    deliveryDesiredSlot: order.deliveryDesiredSlot,
-    deliveryComment: order.deliveryComment,
-    customerComment: order.customerComment,
-    createdAt: order.createdAt,
-  }).catch((error) => {
+  try {
+    await notifyTelegramSubscribersAboutOrder({
+      id: order.id,
+      orderNumber: order.orderNumber,
+      customerName,
+      customerPhone,
+      customerEmail,
+      total: order.total,
+      deliveryCity: order.deliveryCity,
+      deliveryStreet: order.deliveryStreet,
+      deliveryHouse: order.deliveryHouse,
+      deliveryApartment: order.deliveryApartment,
+      deliveryDesiredSlot: order.deliveryDesiredSlot,
+      deliveryComment: order.deliveryComment,
+      customerComment: order.customerComment,
+      createdAt: order.createdAt,
+    });
+  } catch (error) {
     console.error("Telegram order notification error:", error);
-  });
+  }
 
   return { orderId: order.id, orderNumber: order.orderNumber, status: order.status, total: order.total };
 }
