@@ -5,7 +5,18 @@ import { normalizePhone, validatePhone } from "@/lib/phone";
 const OTP_TTL_MINUTES = 10;
 const DEV_OTP_CODE = "1111";
 
+function getMockOtpCode() {
+  const value = process.env.OTP_MOCK_CODE?.replace(/\D/g, "").slice(0, 4) || "";
+  return value.length === 4 ? value : "";
+}
+
+function isMockOtpEnabled() {
+  return Boolean(getMockOtpCode());
+}
+
 export function generateOtpCode() {
+  const mockCode = getMockOtpCode();
+  if (mockCode) return mockCode;
   if (process.env.NODE_ENV !== "production") return DEV_OTP_CODE;
   return String(Math.floor(1000 + Math.random() * 9000));
 }
@@ -18,11 +29,15 @@ export async function createOtpCode(phone: string) {
   const expiresAt = new Date();
   expiresAt.setMinutes(expiresAt.getMinutes() + OTP_TTL_MINUTES);
 
-  await prisma.otpCode.create({
+  const otpCode = await prisma.otpCode.create({
     data: { phone: normalizedPhone, code, purpose: OtpPurpose.login, expiresAt },
   });
 
-  return { phone: normalizedPhone, code, expiresAt };
+  return { id: otpCode.id, phone: normalizedPhone, code, expiresAt };
+}
+
+export async function deleteOtpCode(id: string) {
+  await prisma.otpCode.delete({ where: { id } });
 }
 
 export async function verifyOtpCode(phone: string, code: string) {
@@ -31,8 +46,15 @@ export async function verifyOtpCode(phone: string, code: string) {
 
   if (!validatePhone(normalizedPhone)) throw new Error("invalid_phone");
 
-  // Local/dev fallback: accept 1111 without requiring an OTP DB record.
-  if (normalizedCode === DEV_OTP_CODE) {
+  const mockCode = getMockOtpCode();
+
+  // Explicit mock mode for local/prod testing.
+  if (mockCode && normalizedCode === mockCode) {
+    return { phone: normalizedPhone };
+  }
+
+  // Local/dev fallback without configured mock env.
+  if (process.env.NODE_ENV !== "production" && normalizedCode === DEV_OTP_CODE) {
     return { phone: normalizedPhone };
   }
 
@@ -56,3 +78,5 @@ export async function verifyOtpCode(phone: string, code: string) {
 
   return { phone: normalizedPhone };
 }
+
+export { isMockOtpEnabled };

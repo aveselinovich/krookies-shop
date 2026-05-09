@@ -2,6 +2,7 @@ import { DeliveryStatus, OrderStatus, PaymentStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { normalizePhone, validatePhone } from "@/lib/phone";
 import { createYookassaPayment, YookassaWebhookBody, yookassaAmountToKopecks } from "@/lib/yookassa";
+import { notifyTelegramSubscribersAboutOrder } from "@/lib/telegram";
 
 type CreateOrderInput = {
   customer: { name: string; phone: string; email?: string };
@@ -115,6 +116,25 @@ export async function createOrder(input: CreateOrderInput) {
       items: { create: orderItems },
     },
     include: { items: true },
+  });
+
+  notifyTelegramSubscribersAboutOrder({
+    id: order.id,
+    orderNumber: order.orderNumber,
+    customerName,
+    customerPhone,
+    customerEmail,
+    total: order.total,
+    deliveryCity: order.deliveryCity,
+    deliveryStreet: order.deliveryStreet,
+    deliveryHouse: order.deliveryHouse,
+    deliveryApartment: order.deliveryApartment,
+    deliveryDesiredSlot: order.deliveryDesiredSlot,
+    deliveryComment: order.deliveryComment,
+    customerComment: order.customerComment,
+    createdAt: order.createdAt,
+  }).catch((error) => {
+    console.error("Telegram order notification error:", error);
   });
 
   return { orderId: order.id, orderNumber: order.orderNumber, status: order.status, total: order.total };

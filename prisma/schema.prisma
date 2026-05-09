@@ -131,6 +131,19 @@ model Order {
   @@map("orders")
 }
 
+model TelegramSubscriber {
+  id        String   @id @default(cuid())
+  chatId    String   @unique
+  username  String?
+  firstName String?
+  isActive  Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([isActive])
+  @@map("telegram_subscribers")
+}
+
 model OrderItem {
   id           String   @id @default(cuid())
   orderId      String

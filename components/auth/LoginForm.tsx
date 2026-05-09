@@ -8,6 +8,31 @@ import { formatPhoneInput, validatePhone } from "@/lib/phone";
 type Step = "phone" | "code";
 type AuthUser = { id: string; name: string | null; phone: string; email: string | null; role: "customer" | "admin" };
 
+function getSendCodeErrorMessage(error: unknown) {
+  if (!(error instanceof Error)) {
+    return "Не получилось отправить код. Попробуйте еще раз";
+  }
+
+  switch (error.message) {
+    case "invalid_phone":
+      return "Проверьте номер телефона";
+    case "sms_not_configured":
+      return "Отправка SMS пока не настроена";
+    case "direct_sms_402":
+      return "На SMS-аккаунте недостаточно средств";
+    case "direct_sms_4010":
+    case "direct_sms_4012":
+    case "direct_sms_4030":
+      return "Ошибка настройки SMS-сервиса";
+    case "direct_sms_4220":
+    case "direct_sms_4222":
+    case "direct_sms_4223":
+      return "SMS-сервис вернул ошибку параметров отправки";
+    default:
+      return "Не получилось отправить код. Попробуйте еще раз";
+  }
+}
+
 export function LoginForm({ nextUrl }: { nextUrl?: string }) {
   const router = useRouter();
   const [step, setStep] = useState<Step>("phone");
@@ -50,7 +75,7 @@ export function LoginForm({ nextUrl }: { nextUrl?: string }) {
     setPhone(formatPhoneInput(result.phone));
     setStep("code");
     setResendSecondsLeft(60);
-    setMessage(null);
+    setMessage(result.alreadySent ? "Код уже отправлен. Введите его ниже" : null);
   }
 
   async function sendCode(event: FormEvent<HTMLFormElement>) {
@@ -65,8 +90,8 @@ export function LoginForm({ nextUrl }: { nextUrl?: string }) {
     setMessage(null);
     try {
       await requestCode(phone);
-    } catch {
-      setMessage("Не получилось отправить код. Проверьте номер телефона");
+    } catch (error) {
+      setMessage(getSendCodeErrorMessage(error));
     } finally {
       setIsLoading(false);
     }
@@ -80,8 +105,8 @@ export function LoginForm({ nextUrl }: { nextUrl?: string }) {
 
     try {
       await requestCode(phone);
-    } catch {
-      setMessage("Не получилось отправить код повторно. Попробуйте еще раз");
+    } catch (error) {
+      setMessage(getSendCodeErrorMessage(error));
     } finally {
       setIsLoading(false);
     }

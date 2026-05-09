@@ -88,6 +88,11 @@ SUPABASE_STORAGE_BUCKET="product-images"
 YOOKASSA_SHOP_ID=""
 YOOKASSA_SECRET_KEY=""
 YOOKASSA_WEBHOOK_SECRET=""
+DIRECT_SMS_API_KEY=""
+DIRECT_SMS_SENDER_NAME="sms_promo"
+OTP_MOCK_CODE=""
+TELEGRAM_BOT_TOKEN=""
+TELEGRAM_WEBHOOK_SECRET=""
 ```
 
 ## Важно перед production
@@ -97,10 +102,31 @@ YOOKASSA_WEBHOOK_SECRET=""
 - Для Vercel + Prisma + Supabase использовать `DATABASE_URL` в transaction mode `:6543` с `?pgbouncer=true&connection_limit=1`
 - Для Prisma CLI (`db push`, `seed`) использовать `DIRECT_URL` на direct connection `db....supabase.co:5432`
 - Подключить реальные ключи ЮKassa
+- Добавить в env `DIRECT_SMS_API_KEY` и `DIRECT_SMS_SENDER_NAME`
+- Для тестовой авторизации без реальной SMS можно временно указать `OTP_MOCK_CODE="1111"`
+- Добавить в env `TELEGRAM_BOT_TOKEN` и `TELEGRAM_WEBHOOK_SECRET`
 - Указать webhook в кабинете ЮKassa: `https://ваш-домен.ru/api/payment/webhook`
+- Указать webhook для Telegram бота: `https://ваш-домен.ru/api/telegram/webhook`
 - Усилить webhook проверкой платежа через `GET /v3/payments/{payment_id}`
-- Подключить SMS-сервис вместо dev-кода `1111`
+- Для production убедиться, что SMS настроен, иначе отправка кода входа будет возвращать ошибку
 - Заменить `AUTH_SECRET` на длинную случайную строку
 - Убрать dev-подсказку с кодом из интерфейса входа
 - Загрузить реальные фото товаров
 - Провести мобильную и дизайн-полировку
+
+## Direct SMS
+
+Для отправки кодов входа проект использует Direct API:
+
+- метод: `POST https://direct.i-dgtl.ru/api/v1/message`
+- авторизация: `Authorization: Basic {TOKEN_1}`
+- для тестов без собственного sender допускается `senderName="sms_promo"`
+
+По документации:
+- нужен API-ключ типа `{TOKEN_1}` для работы с сообщениями
+- ключ создаётся в личном кабинете `Разработчикам → API`
+- API нельзя вызывать из браузера, только с сервера
+
+Официальная документация:
+- [Авторизация запросов](https://api.docs.direct.i-dgtl.ru/authorization)
+- [Отправка SMS](https://api.docs.direct.i-dgtl.ru/messages/sms-sending)
