@@ -80,6 +80,10 @@ NEXT_PUBLIC_SITE_URL="http://localhost:3000"
 AUTH_SECRET="replace-with-a-long-random-secret"
 ADMIN_PHONE="+79959178862"
 ADMIN_EMAIL="mackacrvena@gmail.com"
+SUPABASE_URL="https://your-project.supabase.co"
+NEXT_PUBLIC_SUPABASE_URL="https://your-project.supabase.co"
+SUPABASE_SERVICE_ROLE_KEY="your-service-role-key"
+SUPABASE_STORAGE_BUCKET="product-images"
 YOOKASSA_SHOP_ID=""
 YOOKASSA_SECRET_KEY=""
 YOOKASSA_WEBHOOK_SECRET=""
@@ -87,6 +91,8 @@ YOOKASSA_WEBHOOK_SECRET=""
 
 ## Важно перед production
 
+- Создать в Supabase публичный bucket `product-images` или указать своё имя в `SUPABASE_STORAGE_BUCKET`
+- Добавить в env `SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_URL` и `SUPABASE_SERVICE_ROLE_KEY`
 - Подключить реальные ключи ЮKassa
 - Указать webhook в кабинете ЮKassa: `https://ваш-домен.ru/api/payment/webhook`
 - Усилить webhook проверкой платежа через `GET /v3/payments/{payment_id}`

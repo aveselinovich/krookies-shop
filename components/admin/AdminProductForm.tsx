@@ -13,6 +13,34 @@ function rublesToKopecks(value: string) {
   return Math.round(Number(value.replace(",", ".")) * 100);
 }
 
+function getProductFormMessage(error: string) {
+  switch (error) {
+    case "file_too_large":
+      return "Фото слишком большое. Загрузите файл до 5 МБ";
+    case "unsupported_file_type":
+      return "Поддерживаются только JPG, PNG и WEBP";
+    case "storage_not_configured":
+      return "Загрузка фото пока не настроена в storage";
+    case "storage_upload_failed":
+    case "upload_failed":
+      return "Не получилось загрузить фото";
+    case "product_title_required":
+      return "Укажите название товара";
+    case "product_short_description_required":
+      return "Добавьте короткое описание";
+    case "product_composition_required":
+      return "Добавьте состав";
+    case "product_weight_required":
+      return "Укажите граммовку";
+    case "product_image_required":
+      return "Добавьте фото товара";
+    case "product_price_invalid":
+      return "Проверьте цену";
+    default:
+      return "Не получилось сохранить товар";
+  }
+}
+
 type AdminProductFormProps =
   | { mode: "create"; product?: never }
   | { mode: "edit"; product: Product };
@@ -98,7 +126,7 @@ export function AdminProductForm({ mode, product }: AdminProductFormProps) {
       router.refresh();
     } catch (error) {
       console.error(error);
-      setMessage("Не получилось сохранить товар");
+      setMessage(getProductFormMessage(error instanceof Error ? error.message : "product_save_failed"));
     } finally {
       setIsSaving(false);
     }
@@ -181,7 +209,7 @@ export function AdminProductForm({ mode, product }: AdminProductFormProps) {
             className="block w-full rounded-2xl border border-dashed border-[#D8B99B] bg-white px-4 py-6 text-sm text-[#54342C]"
           />
           <p className="mt-3 text-sm leading-6 text-[#54342C]">
-            Загрузите JPG, PNG или WEBP. После сохранения фото появится на витрине и в карточке товара
+            Загрузите JPG, PNG или WEBP до 5 МБ. После сохранения фото появится на витрине и в карточке товара
           </p>
         </label>
       </div>

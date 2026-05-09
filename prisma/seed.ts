@@ -4,7 +4,7 @@ import { PrismaClient, ProductBadge, UserRole } from "@prisma/client";
 const prisma = new PrismaClient();
 
 const adminPhone = process.env.ADMIN_PHONE || "+79959178862";
-const adminEmail = process.env.ADMIN_EMAIL || "crvenamacka@gmail.com";
+const adminEmail = process.env.ADMIN_EMAIL || "mackacrvena@gmail.com";
 const adminPassword = process.env.ADMIN_PASSWORD || "krookiesadmin";
 
 function hashPassword(password: string) {
