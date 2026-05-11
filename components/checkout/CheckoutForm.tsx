@@ -7,7 +7,7 @@ import { CartItem } from "@/types/cart";
 import { AddressSuggestion } from "@/types/dadata";
 import { CheckoutDelivery } from "@/types/order";
 import { parseDeliveryAddress } from "@/lib/address";
-import { clearCart, getCartItems, getCartState } from "@/lib/cart";
+import { clearCart, getCartItems, getCartState, subscribeCart } from "@/lib/cart";
 import { isDeliveryDateTooEarly } from "@/lib/delivery-date";
 import { validatePhone } from "@/lib/phone";
 import { Button } from "@/components/ui/Button";
@@ -99,7 +99,7 @@ function getDeliveryAddressParts(delivery: CheckoutDelivery) {
 
 export function CheckoutForm() {
   const router = useRouter();
-  const [items, setItems] = useState<CartItem[]>([]);
+  const [items, setItems] = useState<CartItem[] | null>(null);
   const [contact, setContact] = useState<ContactState>(INITIAL_CONTACT);
   const [delivery, setDelivery] = useState<CheckoutDelivery>(INITIAL_DELIVERY);
   const [selectedAddressSuggestion, setSelectedAddressSuggestion] = useState<AddressSuggestion | null>(null);
@@ -110,6 +110,7 @@ export function CheckoutForm() {
 
   useEffect(() => {
     setItems(getCartItems());
+    const unsubscribeCart = subscribeCart(() => setItems(getCartItems()));
 
     let isMounted = true;
 
@@ -135,10 +136,9 @@ export function CheckoutForm() {
 
     return () => {
       isMounted = false;
+      unsubscribeCart();
     };
   }, []);
-
-  const cartState = getCartState(items);
 
   function clearFieldError(field: CheckoutFieldKey) {
     setFieldErrors((current) => {
@@ -222,7 +222,7 @@ export function CheckoutForm() {
   const summaryError = fieldErrors.summary || null;
 
   function validateForm(): CheckoutValidationError | null {
-    if (!items.length) return { field: "summary", message: "Корзина пустая" };
+    if (!items?.length) return { field: "summary", message: "Корзина пустая" };
     if (!contact.name.trim()) return { field: "name", message: "Укажите имя" };
     if (!contact.phone.trim()) return { field: "phone", message: "Укажите телефон" };
     if (!validatePhone(contact.phone)) return { field: "phone", message: "Проверьте номер телефона" };
@@ -245,6 +245,12 @@ export function CheckoutForm() {
     const validationError = validateForm();
     if (validationError) {
       showFieldError(validationError);
+      return;
+    }
+
+    const currentItems = items;
+    if (!currentItems?.length) {
+      showFieldError({ field: "summary", message: "Корзина пустая" });
       return;
     }
 
@@ -274,7 +280,7 @@ export function CheckoutForm() {
           desiredSlot: delivery.desiredSlot || undefined,
           comment: delivery.comment?.trim() || undefined,
         },
-        items: items.map((item) => ({
+        items: currentItems.map((item) => ({
           productId: item.productId,
           slug: item.slug,
           quantity: item.quantity,
@@ -322,7 +328,27 @@ export function CheckoutForm() {
     }
   }
 
+  if (items === null) {
+    return (
+      <div className="animate-pulse space-y-8">
+        <div className="grid gap-8 lg:grid-cols-[1fr_380px]">
+          <div className="space-y-5">
+            <div className="h-56 rounded-[32px] bg-white ring-1 ring-black/5" />
+            <div className="h-56 rounded-[32px] bg-white ring-1 ring-black/5" />
+            <div className="h-48 rounded-[32px] bg-white ring-1 ring-black/5" />
+          </div>
+          <div className="h-80 rounded-[32px] bg-white ring-1 ring-black/5" />
+        </div>
+        <p className="text-center text-sm font-semibold text-[#54342C] opacity-70">
+          Загружаем оформление заказа...
+        </p>
+      </div>
+    );
+  }
+
   if (!items.length) return <CartEmpty />;
+
+  const cartState = getCartState(items);
 
   const consentText = (
     <p className="text-center text-sm leading-6 text-[#7D5B52]">

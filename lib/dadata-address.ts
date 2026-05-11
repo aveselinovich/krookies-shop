@@ -9,11 +9,15 @@ type DadataAddressSuggestion = {
   data?: {
     region?: string | null;
     city?: string | null;
+    city_with_type?: string | null;
     settlement?: string | null;
+    settlement_with_type?: string | null;
     street_with_type?: string | null;
     house?: string | null;
     block_type?: string | null;
     block?: string | null;
+    stead?: string | null;
+    stead_type?: string | null;
     flat?: string | null;
   } | null;
 };
@@ -40,12 +44,36 @@ function formatHouse(suggestion: DadataAddressSuggestion) {
   const house = cleanup(suggestion.data?.house);
   const block = cleanup(suggestion.data?.block);
   const blockType = cleanup(suggestion.data?.block_type);
+  const stead = cleanup(suggestion.data?.stead);
+  const steadType = cleanup(suggestion.data?.stead_type);
 
   if (!house) return "";
   if (!block) return house;
   if (!blockType) return `${house} ${block}`;
 
   return `${house} ${blockType} ${block}`;
+}
+
+function formatHouseOrStead(suggestion: DadataAddressSuggestion) {
+  const formattedHouse = formatHouse(suggestion);
+  if (formattedHouse) return formattedHouse;
+
+  const stead = cleanup(suggestion.data?.stead);
+  const steadType = cleanup(suggestion.data?.stead_type);
+
+  if (!stead) return "";
+  if (!steadType) return stead;
+
+  return `${steadType} ${stead}`;
+}
+
+function formatStreetLikePart(suggestion: DadataAddressSuggestion) {
+  return (
+    cleanup(suggestion.data?.street_with_type) ||
+    cleanup(suggestion.data?.settlement_with_type) ||
+    cleanup(suggestion.data?.city_with_type) ||
+    cleanup(suggestion.data?.settlement)
+  );
 }
 
 export function isMoscowDeliveryArea(region?: string | null, city?: string | null) {
@@ -73,8 +101,8 @@ function uniqueByUnrestrictedValue(suggestions: AddressSuggestion[]) {
 }
 
 function mapSuggestion(suggestion: DadataAddressSuggestion): AddressSuggestion | null {
-  const street = cleanup(suggestion.data?.street_with_type);
-  const house = formatHouse(suggestion);
+  const street = formatStreetLikePart(suggestion);
+  const house = formatHouseOrStead(suggestion);
   const region = cleanup(suggestion.data?.region);
   const city = cleanup(suggestion.data?.city) || cleanup(suggestion.data?.settlement) || region || "Москва";
 

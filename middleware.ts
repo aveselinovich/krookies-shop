@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { decodeSessionTokenWithoutVerification, SESSION_COOKIE_NAME } from "@/lib/session-shared";
+import { SESSION_COOKIE_NAME, verifySessionToken } from "@/lib/session-shared";
 
 function redirectToLogin(request: NextRequest) {
   const loginUrl = new URL("/login", request.url);
@@ -7,10 +7,10 @@ function redirectToLogin(request: NextRequest) {
   return NextResponse.redirect(loginUrl);
 }
 
-export function middleware(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
   const sessionCookie = request.cookies.get(SESSION_COOKIE_NAME)?.value;
-  const session = sessionCookie ? decodeSessionTokenWithoutVerification(sessionCookie) : null;
+  const session = sessionCookie ? await verifySessionToken(sessionCookie) : null;
 
   if (pathname.startsWith("/admin")) {
     if (!session) return redirectToLogin(request);
