@@ -20,18 +20,29 @@ function isPrimaryAdminPhone(phone: string) {
   return normalizePhone(phone) === getPrimaryAdminPhone();
 }
 
+function requireUserPhone(phone: string | null) {
+  if (!phone) {
+    throw new Error("invalid_phone");
+  }
+
+  return phone;
+}
+
 function toAdminListItem(user: {
   id: string;
   name: string | null;
-  phone: string;
+  phone: string | null;
   email: string | null;
   role: UserRole;
   createdAt: Date;
   updatedAt: Date;
 }) {
+  const phone = requireUserPhone(user.phone);
+
   return {
     ...user,
-    isPrimary: isPrimaryAdminPhone(user.phone),
+    phone,
+    isPrimary: isPrimaryAdminPhone(phone),
   };
 }
 
@@ -120,7 +131,7 @@ export async function deleteAdminUser(userId: string) {
     throw new Error("admin_not_found");
   }
 
-  if (isPrimaryAdminPhone(existingUser.phone)) {
+  if (isPrimaryAdminPhone(requireUserPhone(existingUser.phone))) {
     throw new Error("protected_admin");
   }
 

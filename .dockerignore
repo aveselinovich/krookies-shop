@@ -1,0 +1,16 @@
+.git
+.next
+node_modules
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+npm-debug.log*
+*.log
+README.md
+CHANGELOG_STAGE_26.md
+EXACT_LANDING_STYLE_NOTES.md
+FINAL_NOTES.md
+LOCAL_LOGIN_NOTE.md
+tsconfig.tsbuildinfo

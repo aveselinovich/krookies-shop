@@ -17,6 +17,7 @@ export async function POST(request: NextRequest) {
         name: user.name,
         phone: user.phone,
         email: user.email,
+        telegramUsername: user.telegramUsername,
         role: user.role,
       },
     });

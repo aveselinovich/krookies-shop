@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
 import { requireApiAdmin } from "@/lib/permissions";
-import { createOrderPaymentLink } from "@/lib/orders";
+import { createOrderPaymentLink, saveManualOrderPaymentLink } from "@/lib/orders";
 export async function POST(_request: Request, { params }: { params: { id: string } }) { try { const auth=await requireApiAdmin(); if(auth.response) return auth.response; const result=await createOrderPaymentLink(params.id); return NextResponse.json(result); } catch(error) { console.error("POST /api/admin/orders/[id]/payment-link error:", error); return NextResponse.json({ error: error instanceof Error ? error.message : "payment_link_create_failed" }, { status: 400 }); } }
+export async function PATCH(request: Request, { params }: { params: { id: string } }) { try { const auth=await requireApiAdmin(); if(auth.response) return auth.response; const body = await request.json(); const result=await saveManualOrderPaymentLink(params.id, body.paymentUrl || ""); return NextResponse.json(result); } catch(error) { console.error("PATCH /api/admin/orders/[id]/payment-link error:", error); return NextResponse.json({ error: error instanceof Error ? error.message : "payment_link_save_failed" }, { status: 400 }); } }

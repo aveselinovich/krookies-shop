@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { QuantitySelector } from "@/components/ui/QuantitySelector";
 import { Button } from "@/components/ui/Button";
@@ -22,6 +22,7 @@ export function AddToCartButton({ product }: AddToCartButtonProps) {
   const router = useRouter();
   const [quantity, setQuantity] = useState(1);
   const [added, setAdded] = useState(false);
+  const [isOpeningCart, startOpeningCart] = useTransition();
 
   function handleAddToCart() {
     if (!product.isAvailable) return;
@@ -47,7 +48,17 @@ export function AddToCartButton({ product }: AddToCartButtonProps) {
       </div>
       <div className="flex flex-col gap-3 sm:flex-row">
         <Button onClick={handleAddToCart} className="w-full sm:w-auto">Добавить в корзину</Button>
-        {added ? <Button type="button" variant="secondary" onClick={() => router.push("/cart")} className="w-full sm:w-auto">Перейти в корзину</Button> : null}
+        {added ? (
+          <Button
+            type="button"
+            variant="secondary"
+            disabled={isOpeningCart}
+            onClick={() => startOpeningCart(() => router.push("/cart"))}
+            className="w-full sm:w-auto"
+          >
+            {isOpeningCart ? "Открываем корзину..." : "Перейти в корзину"}
+          </Button>
+        ) : null}
       </div>
       {added ? <p className="text-sm font-medium text-[#54342C]">Добавили в корзину. Можно выбрать еще или перейти к оформлению</p> : null}
     </div>

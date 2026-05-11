@@ -38,6 +38,15 @@ export async function getAdminDashboardStats() {
 export async function getAdminOrderById(id: string) {
   return prisma.order.findUnique({
     where: { id },
-    include: { items: { orderBy: { createdAt: "asc" } }, payment: true },
+    include: {
+      items: { orderBy: { createdAt: "asc" } },
+      payment: true,
+      user: {
+        select: {
+          id: true,
+          telegramUsername: true,
+        },
+      },
+    },
   });
 }

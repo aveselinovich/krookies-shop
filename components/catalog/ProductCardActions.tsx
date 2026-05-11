@@ -49,7 +49,7 @@ export function ProductCardActions({ product }: ProductCardActionsProps) {
       <button
         type="button"
         onClick={() => addOneCartItem(product)}
-        className="w-full rounded-2xl px-5 py-3 font-semibold shadow-lg transition hover:opacity-90"
+        className="inline-flex h-10 min-w-[9.75rem] items-center justify-center rounded-2xl px-4 text-sm font-semibold shadow-lg transition hover:opacity-90 sm:h-12 sm:min-w-[11rem] sm:px-5 sm:text-base"
         style={{ backgroundColor: BROWN, color: "white" }}
       >
         Добавить в корзину
@@ -58,18 +58,18 @@ export function ProductCardActions({ product }: ProductCardActionsProps) {
   }
 
   return (
-    <div className="inline-flex items-center overflow-hidden rounded-2xl shadow ring-1 ring-black/5" style={{ backgroundColor: PINK, color: BROWN }}>
-      <button type="button" onClick={() => changeQuantity(quantity - 1)} className="h-12 w-14 text-xl font-black">−</button>
+    <div className="inline-flex h-10 items-center overflow-hidden rounded-2xl shadow ring-1 ring-black/5 sm:h-12" style={{ backgroundColor: PINK, color: BROWN }}>
+      <button type="button" onClick={() => changeQuantity(quantity - 1)} className="h-10 w-10 text-lg font-black sm:h-12 sm:w-14 sm:text-xl">−</button>
       <input
         type="text"
         inputMode="numeric"
         value={inputValue}
         onChange={handleInputChange}
         onBlur={handleInputBlur}
-        className="h-12 w-16 bg-white/50 px-2 text-center font-black outline-none"
+        className="h-10 w-11 bg-white/50 px-1 text-center text-sm font-black outline-none sm:h-12 sm:w-14 sm:px-2 sm:text-base"
         aria-label="Количество товара"
       />
-      <button type="button" onClick={() => changeQuantity(quantity + 1)} disabled={quantity >= MAX_CART_ITEM_QUANTITY} className="h-12 w-14 text-xl font-black disabled:opacity-40">+</button>
+      <button type="button" onClick={() => changeQuantity(quantity + 1)} disabled={quantity >= MAX_CART_ITEM_QUANTITY} className="h-10 w-10 text-lg font-black disabled:opacity-40 sm:h-12 sm:w-14 sm:text-xl">+</button>
     </div>
   );
 }

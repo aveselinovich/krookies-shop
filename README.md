@@ -1,6 +1,6 @@
-# KROOKIES Shop Full MVP
+# KROOKIES Shop Full
 
-Полная MVP-версия интернет-магазина KROOKIES: витрина, корзина, checkout-заявка, Prisma/PostgreSQL, админка, личный кабинет, вход по телефону и заготовка интеграции ЮKassa.
+Полная версия интернет-магазина KROOKIES
 
 ## Что внутри
 
@@ -8,10 +8,8 @@
 - Создание заказа-заявки: клиент не платит сразу
 - Админка `/admin`: статистика, заказы, детальная карточка заказа, управление товарами
 - Личный кабинет `/account`: список и детали заказов клиента
-- Авторизация по телефону + коду
-- Dev-код входа: `1111`
-- Админ определяется по номеру `+79959178862`
-- ЮKassa: создание payment link менеджером и webhook оплаты
+- Регистрация и вход клиента по почте и паролю
+- Вход сотрудников через `/staff-login`
 - Яндекс Доставка заложена как ручной процесс: менеджер оформляет доставку отдельно и отправляет клиенту отдельную ссылку
 
 ## Быстрый запуск
@@ -49,28 +47,15 @@ npm run dev
 http://localhost:3000
 ```
 
-## Вход в админку
+## Вход сотрудников
 
 ```text
-/login
-Телефон: +79959178862
-Код: 1111
+/staff-login
+Почта: ADMIN_EMAIL
+Пароль: пароль администратора
 ```
 
 После входа откроется `/admin`.
-
-## Проверка основного сценария
-
-1. Открыть `/catalog`
-2. Добавить печенье в корзину
-3. Перейти `/cart`
-4. Открыть `/checkout`
-5. Заполнить форму и отправить заказ
-6. Войти админом в `/login`
-7. Открыть `/admin/orders`
-8. Открыть заказ
-9. Сформировать ссылку на оплату ЮKassa
-10. После оплаты webhook должен перевести заказ в `accepted`
 
 ## Переменные окружения
 
@@ -81,6 +66,7 @@ NEXT_PUBLIC_SITE_URL="http://localhost:3000"
 AUTH_SECRET="replace-with-a-long-random-secret"
 ADMIN_PHONE="+79959178862"
 ADMIN_EMAIL="mackacrvena@gmail.com"
+SITE_URL="http://localhost:3000"
 SUPABASE_URL="https://your-project.supabase.co"
 NEXT_PUBLIC_SUPABASE_URL="https://your-project.supabase.co"
 SUPABASE_SERVICE_ROLE_KEY="your-service-role-key"
@@ -88,45 +74,38 @@ SUPABASE_STORAGE_BUCKET="product-images"
 YOOKASSA_SHOP_ID=""
 YOOKASSA_SECRET_KEY=""
 YOOKASSA_WEBHOOK_SECRET=""
-DIRECT_VERIFIER_API_KEY=""
-DIRECT_VERIFIER_GATEWAY_ID=""
-OTP_MOCK_CODE=""
+RESEND_API_KEY=""
+EMAIL_FROM="KROOKIES <no-reply@your-domain.ru>"
 TELEGRAM_BOT_TOKEN=""
 TELEGRAM_WEBHOOK_SECRET=""
+DADATA_API_KEY=""
 ```
 
-## Важно перед production
 
-- Создать в Supabase публичный bucket `product-images` или указать своё имя в `SUPABASE_STORAGE_BUCKET`
-- Добавить в env `SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_URL` и `SUPABASE_SERVICE_ROLE_KEY`
-- Для Vercel + Prisma + Supabase использовать `DATABASE_URL` в transaction mode `:6543` с `?pgbouncer=true&connection_limit=1`
-- Для Prisma CLI (`db push`, `seed`) использовать `DIRECT_URL` на direct connection `db....supabase.co:5432`
-- Подключить реальные ключи ЮKassa
-- Добавить в env `DIRECT_VERIFIER_API_KEY` и `DIRECT_VERIFIER_GATEWAY_ID`
-- Для тестовой авторизации без реальной SMS можно временно указать `OTP_MOCK_CODE="1111"`
-- Добавить в env `TELEGRAM_BOT_TOKEN` и `TELEGRAM_WEBHOOK_SECRET`
-- Указать webhook в кабинете ЮKassa: `https://ваш-домен.ru/api/payment/webhook`
-- Указать webhook для Telegram бота: `https://ваш-домен.ru/api/telegram/webhook`
-- Усилить webhook проверкой платежа через `GET /v3/payments/{payment_id}`
-- Для production убедиться, что SMS настроен, иначе отправка кода входа будет возвращать ошибку
-- Заменить `AUTH_SECRET` на длинную случайную строку
-- Убрать dev-подсказку с кодом из интерфейса входа
-- Загрузить реальные фото товаров
-- Провести мобильную и дизайн-полировку
+### Заполнить `.env.production`
 
-## Direct SMS
+Минимально нужно указать:
 
-Для отправки кодов входа проект использует Direct API:
+- `POSTGRES_DB`
+- `POSTGRES_USER`
+- `POSTGRES_PASSWORD`
+- `DATABASE_URL`
+- `DIRECT_URL`
+- `NEXT_PUBLIC_SITE_URL`
+- `SITE_URL`
+- `AUTH_SECRET`
+- `ADMIN_EMAIL`
+- `ADMIN_PASSWORD`
+- `SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `SUPABASE_SERVICE_ROLE_KEY`
+- `SUPABASE_STORAGE_BUCKET`
 
-- метод: `POST https://direct.i-dgtl.ru/api/v1/message`
-- авторизация: `Authorization: Basic {TOKEN_1}`
-- для Direct verifier нужен отдельный ключ типа `TOKEN_3` и `gatewayId` модуля верификации
+Если включены соответствующие функции, дополнительно заполнить:
 
-По документации:
-- нужен API-ключ типа `{TOKEN_1}` для работы с сообщениями
-- ключ создаётся в личном кабинете `Разработчикам → API`
-- API нельзя вызывать из браузера, только с сервера
 
-Официальная документация:
-- [Авторизация запросов](https://api.docs.direct.i-dgtl.ru/authorization)
-- [Отправка SMS](https://api.docs.direct.i-dgtl.ru/messages/sms-sending)
+- `RESEND_API_KEY`
+- `EMAIL_FROM`
+- `TELEGRAM_*`
+- `DADATA_API_KEY`
+

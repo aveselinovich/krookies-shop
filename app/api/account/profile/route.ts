@@ -14,6 +14,7 @@ export async function PATCH(request: NextRequest) {
         name: updatedUser.name,
         phone: updatedUser.phone,
         email: updatedUser.email,
+        telegramUsername: updatedUser.telegramUsername,
         role: updatedUser.role,
       },
     });

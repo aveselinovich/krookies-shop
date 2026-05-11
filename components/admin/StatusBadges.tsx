@@ -1,4 +1,4 @@
-import { DeliveryStatus, OrderStatus, PaymentStatus } from "@prisma/client";
+import type { DeliveryStatus, OrderStatus, PaymentStatus } from "@prisma/client";
 const ORDER_STATUS_LABELS: Record<OrderStatus,string> = { pending_confirmation:"Ожидает подтверждения", pending_payment:"Ожидает оплаты", accepted:"Принят", baking:"Выпекается", ready:"Готов", delivered:"Доставлен", cancelled:"Отменен" };
 const PAYMENT_STATUS_LABELS: Record<PaymentStatus,string> = { pending:"Ожидает оплаты", paid:"Оплачен", failed:"Ошибка оплаты", refunded:"Возврат" };
 const DELIVERY_STATUS_LABELS: Record<DeliveryStatus,string> = { not_created:"Не оформлена", payment_link_sent:"Ссылка отправлена", delivered:"Доставлено" };

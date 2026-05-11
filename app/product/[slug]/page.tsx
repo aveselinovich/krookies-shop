@@ -43,7 +43,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
           </Link>
         </div>
 
-        <div className="grid gap-8 lg:grid-cols-[0.95fr_1.05fr]">
+        <div className="grid items-start gap-8 lg:grid-cols-[0.95fr_1.05fr]">
           <ProductGallery title={product.title} imageUrl={product.imageUrl} images={product.images} />
           <ProductDetails product={product} />
         </div>

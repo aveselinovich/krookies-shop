@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useState } from "react";
-import { User } from "@prisma/client";
+import type { User } from "@prisma/client";
 import { useRouter, useSearchParams } from "next/navigation";
 import { validateEmail } from "@/lib/email";
 import { formatPhoneInput, validatePhone } from "@/lib/phone";
@@ -16,6 +16,8 @@ function getProfileMessage(error: string) {
       return "Проверьте номер телефона";
     case "invalid_email":
       return "Проверьте адрес почты";
+    case "invalid_telegram_username":
+      return "Проверьте username в Telegram";
     case "email_already_used":
       return "Эта почта уже используется другим пользователем";
     case "name_required":
@@ -33,14 +35,16 @@ export function ProfileForm({ user }: ProfileFormProps) {
   const [name, setName] = useState(user.name || "");
   const [phone, setPhone] = useState(formatPhoneInput(user.phone || ""));
   const [email, setEmail] = useState(user.email || "");
+  const [telegramUsername, setTelegramUsername] = useState(user.telegramUsername || "");
   const [message, setMessage] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const trimmedEmail = email.trim();
+    const trimmedPhone = phone.trim();
 
-    if (!validatePhone(phone)) {
+    if (trimmedPhone && !validatePhone(phone)) {
       setMessage("Проверьте номер телефона");
       return;
     }
@@ -59,8 +63,9 @@ export function ProfileForm({ user }: ProfileFormProps) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name,
-          phone,
+          phone: trimmedPhone || null,
           email: trimmedEmail || null,
+          telegramUsername: telegramUsername.trim() || null,
         }),
       });
 
@@ -106,8 +111,7 @@ export function ProfileForm({ user }: ProfileFormProps) {
       ) : null}
 
       <p className="mt-4 max-w-2xl leading-7 text-[#54342C]">
-        Сейчас вход работает по телефону и коду. Здесь можно обновить имя,
-        телефон и почту
+        Здесь можно обновить имя, почту, телефон и Telegram для связи по заказам
       </p>
 
       <div className="mt-8 grid gap-5 md:grid-cols-2">
@@ -125,7 +129,7 @@ export function ProfileForm({ user }: ProfileFormProps) {
 
         <label className="block">
           <span className="mb-2 block text-sm font-semibold text-[#54342C]">
-            Телефон
+            Телефон для заказов
           </span>
           <input
             value={phone}
@@ -148,6 +152,19 @@ export function ProfileForm({ user }: ProfileFormProps) {
             placeholder="name@example.com"
             autoComplete="email"
             inputMode="email"
+            className="w-full rounded-2xl border border-[#E6AECB] bg-white px-4 py-3 text-[#54342C] outline-none focus:border-[#54342C]"
+          />
+        </label>
+
+        <label className="block md:col-span-2">
+          <span className="mb-2 block text-sm font-semibold text-[#54342C]">
+            Telegram username
+          </span>
+          <input
+            value={telegramUsername}
+            onChange={(event) => setTelegramUsername(event.target.value)}
+            placeholder="@username"
+            autoComplete="off"
             className="w-full rounded-2xl border border-[#E6AECB] bg-white px-4 py-3 text-[#54342C] outline-none focus:border-[#54342C]"
           />
         </label>

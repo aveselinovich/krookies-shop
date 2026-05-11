@@ -5,6 +5,9 @@ import { useRouter } from "next/navigation";
 
 type AccountCancelOrderButtonProps = {
   orderId: string;
+  variant?: "default" | "text";
+  align?: "start" | "end";
+  onSuccess?: (nextStatus: "cancelled") => void;
 };
 
 const ERROR_MESSAGES: Record<string, string> = {
@@ -13,7 +16,12 @@ const ERROR_MESSAGES: Record<string, string> = {
   unauthorized: "Нужно войти в аккаунт заново",
 };
 
-export function AccountCancelOrderButton({ orderId }: AccountCancelOrderButtonProps) {
+export function AccountCancelOrderButton({
+  orderId,
+  variant = "default",
+  align = "start",
+  onSuccess,
+}: AccountCancelOrderButtonProps) {
   const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
   const [error, setError] = useState("");
@@ -45,6 +53,7 @@ export function AccountCancelOrderButton({ orderId }: AccountCancelOrderButtonPr
         }
 
         setIsOpen(false);
+        onSuccess?.("cancelled");
         router.refresh();
       } catch {
         setError("Не получилось отменить заказ");
@@ -57,7 +66,13 @@ export function AccountCancelOrderButton({ orderId }: AccountCancelOrderButtonPr
       <button
         type="button"
         onClick={() => setIsOpen(true)}
-        className="inline-flex items-center justify-center rounded-2xl border border-[#E6AECB] bg-[#FFF4F8] px-5 py-3 text-sm font-semibold text-[#54342C] transition hover:bg-[#FDE8F0]"
+        className={
+          variant === "text"
+            ? `inline-flex items-center justify-center text-sm font-semibold text-[#8A6A62] transition hover:text-[#54342C] ${
+                align === "end" ? "md:ml-auto" : ""
+              }`
+            : "inline-flex items-center justify-center rounded-2xl border border-[#E6AECB] bg-[#FFF4F8] px-5 py-3 text-sm font-semibold text-[#54342C] transition hover:bg-[#FDE8F0]"
+        }
       >
         Отменить заказ
       </button>

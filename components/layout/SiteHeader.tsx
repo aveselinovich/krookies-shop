@@ -48,11 +48,11 @@ export function SiteHeader() {
           </Link>
 
           <a
-            href="tel:+79932478862"
+            href="tel:+79690483464"
             className="hidden items-center gap-2 text-sm font-semibold hover:opacity-80 lg:inline-flex"
             style={{ color: BROWN }}
           >
-            <PhoneIcon size={16} /> +7 993-247-88-62
+            <PhoneIcon size={16} /> +7 969-048-34-64
           </a>
 
           <Link
@@ -74,11 +74,11 @@ export function SiteHeader() {
         </div>
 
         <a
-          href="tel:+79932478862"
+          href="tel:+79690483464"
           className="inline-flex w-full items-center justify-center gap-2 text-sm font-semibold hover:opacity-80 lg:hidden"
           style={{ color: BROWN }}
         >
-          <PhoneIcon size={16} /> +7 993-247-88-62
+          <PhoneIcon size={16} /> +7 969-048-34-64
         </a>
       </nav>
     </header>

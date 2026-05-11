@@ -7,7 +7,17 @@ type UpdateAccountProfileInput = {
   name?: string;
   phone?: string;
   email?: string | null;
+  telegramUsername?: string | null;
 };
+
+function normalizeTelegramUsername(value: string | null | undefined) {
+  const username = value?.trim().replace(/^@+/, "") || "";
+  return username ? username.toLowerCase() : null;
+}
+
+function isValidTelegramUsername(value: string) {
+  return /^[a-z0-9_]{5,32}$/i.test(value);
+}
 
 export async function updateAccountProfile(
   userId: string,
@@ -24,18 +34,21 @@ export async function updateAccountProfile(
   const hasName = Object.prototype.hasOwnProperty.call(input, "name");
   const hasPhone = Object.prototype.hasOwnProperty.call(input, "phone");
   const hasEmail = Object.prototype.hasOwnProperty.call(input, "email");
+  const hasTelegramUsername = Object.prototype.hasOwnProperty.call(input, "telegramUsername");
 
   const name = hasName ? input.name?.trim() || null : currentUser.name;
+  const normalizedPhone = hasPhone ? normalizePhone(input.phone || "") : null;
   const email = hasEmail ? input.email?.trim().toLowerCase() || null : currentUser.email;
+  const telegramUsername = hasTelegramUsername
+    ? normalizeTelegramUsername(input.telegramUsername)
+    : currentUser.telegramUsername;
 
   if (currentUser.role !== "admin" && !name?.trim()) {
     throw new Error("name_required");
   }
 
   if (hasPhone) {
-    const phone = normalizePhone(input.phone || "");
-
-    if (!validatePhone(phone)) {
+    if (normalizedPhone && !validatePhone(normalizedPhone)) {
       throw new Error("invalid_phone");
     }
   }
@@ -44,11 +57,14 @@ export async function updateAccountProfile(
     throw new Error("invalid_email");
   }
 
-  if (email && currentUser.role === "admin") {
+  if (telegramUsername && !isValidTelegramUsername(telegramUsername)) {
+    throw new Error("invalid_telegram_username");
+  }
+
+  if (email) {
     const emailOwner = await prisma.user.findFirst({
       where: {
         email,
-        role: "admin",
         NOT: { id: currentUser.id },
       },
       select: { id: true },
@@ -67,11 +83,15 @@ export async function updateAccountProfile(
   }
 
   if (hasPhone) {
-    data.phone = normalizePhone(input.phone || "");
+    data.phone = normalizedPhone || null;
   }
 
   if (hasEmail) {
     data.email = email;
+  }
+
+  if (hasTelegramUsername) {
+    data.telegramUsername = telegramUsername;
   }
 
   return prisma.user.update({

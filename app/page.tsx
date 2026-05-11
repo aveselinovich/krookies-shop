@@ -1,10 +1,25 @@
 import { ArrowRightIcon, MessageCircleIcon } from "@/components/ui/Icons";
 import { ProductGrid } from "@/components/product/ProductGrid";
 import { SiteHeader } from "@/components/layout/SiteHeader";
+import { SiteFooter } from "@/components/layout/SiteFooter";
 import { getPublishedProducts } from "@/lib/products";
 
 const PINK = "#E6AECB";
 const BROWN = "#54342C";
+const GALLERY_IMAGES = [
+  {
+    src: "/images/gallery/krookies-gallary-1.jpg",
+    alt: "Шоколадные печенья KROOKIES с орехами и шоколадной глазурью",
+  },
+  {
+    src: "/images/gallery/krookies-gallary-2.png",
+    alt: "Процесс приготовления печенья KROOKIES на кухне",
+  },
+  {
+    src: "/images/gallery/krookies-gallary-3.png",
+    alt: "Печенья KROOKIES с белой глазурью и ягодной посыпкой",
+  },
+];
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -37,28 +52,35 @@ export default async function HomePage() {
               Актуальная витрина
             </h2>
           </div>
-          <ProductGrid products={products} />
+          <ProductGrid products={products} centerDesktopActions />
         </div>
       </section>
 
-      <section id="story" className="py-16 sm:py-20" style={{ backgroundColor: PINK }}>
-        <div className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8">
-          <h2 className="text-center text-3xl font-black sm:text-4xl" style={{ color: BROWN }}>
-            Все началось с случайности
-          </h2>
-          <article className="prose prose-lg mt-6 max-w-none leading-relaxed" style={{ color: BROWN }}>
-            <p className="text-xl font-semibold">
-              Мы делимся кусочком нашей истории и создаем печенье, которое дарит положительные эмоции
+      <section id="gallery" className="py-16 sm:py-20" style={{ backgroundColor: PINK }}>
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="mx-auto max-w-4xl text-center">
+            <h2 className="text-3xl font-black sm:text-4xl" style={{ color: BROWN }}>
+              Галерея Krookies
+            </h2>
+            <p className="mt-4 text-base leading-7 sm:text-lg sm:leading-8" style={{ color: BROWN }}>
+              Настоящие кадры из нашей кухни и витрины: много текстуры, начинки и аппетитного печенья
             </p>
-            <p>
-              Нас не устраивали готовые решения: слишком сухо, жирно или приторно.
-              Десятки рецептов, курсы, бессонные ночи — и вот оно, идеальное печенье
-            </p>
-            <blockquote className="border-l-4 pl-4 font-semibold italic" style={{ borderColor: BROWN }}>
-              «Боже, это невероятно вкусно! Такого мы ещё не пробовали»
-            </blockquote>
-            <p className="font-medium"><i>С любовью, команда Krookies<br />Кусь 🍪</i></p>
-          </article>
+          </div>
+
+          <div className="mt-10 grid gap-4 md:grid-cols-3">
+            {GALLERY_IMAGES.map((image) => (
+              <div
+                key={image.src}
+                className="group overflow-hidden rounded-[2rem] bg-white shadow-lg ring-1 ring-black/5"
+              >
+                <img
+                  src={image.src}
+                  alt={image.alt}
+                  className="aspect-[16/11] w-full object-cover transition duration-500 group-hover:scale-[1.02]"
+                />
+              </div>
+            ))}
+          </div>
         </div>
       </section>
 
@@ -68,8 +90,8 @@ export default async function HomePage() {
             <h2 className="text-3xl font-black sm:text-4xl" style={{ color: BROWN }}>Связаться и заказать</h2>
             <p className="mt-2 opacity-80">Оформите заказ через витрину, а менеджер подтвердит детали и доставку</p>
             <div className="mt-6 space-y-3">
-              <a href="https://wa.me/79932478862" target="_blank" rel="noreferrer" className="flex w-full items-center justify-center gap-3 rounded-2xl px-5 py-4 text-center font-semibold shadow-lg sm:w-fit" style={{ backgroundColor: BROWN, color: "white" }}>
-                <MessageCircleIcon /> WhatsApp: +7 993-247-88-62
+              <a href="https://wa.me/79690483464" target="_blank" rel="noreferrer" className="flex w-full items-center justify-center gap-3 rounded-2xl px-5 py-4 text-center font-semibold shadow-lg sm:w-fit" style={{ backgroundColor: BROWN, color: "white" }}>
+                <MessageCircleIcon /> WhatsApp: +7 969-048-34-64
               </a>
               <a href="https://t.me/krookies_manager" target="_blank" rel="noreferrer" className="flex w-full items-center justify-center gap-3 rounded-2xl px-5 py-4 text-center font-semibold shadow-lg sm:w-fit" style={{ backgroundColor: PINK, color: BROWN }}>
                 <MessageCircleIcon /> Telegram: @krookies_manager
@@ -89,25 +111,7 @@ export default async function HomePage() {
         </div>
       </section>
 
-      <footer className="mt-auto py-10" style={{ backgroundColor: BROWN, color: "#FDECF3" }}>
-        <div className="mx-auto grid max-w-7xl items-center gap-6 px-4 sm:px-6 md:grid-cols-2 lg:px-8">
-          <div>
-            <div className="flex items-center gap-2">
-              <div className="h-11 w-11 rounded-full" style={{ backgroundColor: PINK }}>
-                <img src="/logo-cookie.png" alt="KROOKIES" className="h-9 w-auto translate-x-1 translate-y-1" />
-              </div>
-              <span className="text-lg font-black tracking-wide">KROOKIES</span>
-            </div>
-            <p className="mt-2 opacity-90">
-              American cookies с текучей начинкой. Каждый день — повод для сладкой, счастливой жизни
-            </p>
-          </div>
-          <div className="text-sm opacity-90 md:text-right">
-            © 2026 Krookies — Все права защищены. <br />
-            Оформление заказа через сайт
-          </div>
-        </div>
-      </footer>
+      <SiteFooter />
     </div>
   );
 }

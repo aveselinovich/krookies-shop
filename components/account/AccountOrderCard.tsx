@@ -38,8 +38,8 @@ export function AccountOrderCard({ order }: Props) {
           <p className="mt-2 text-[#54342C]">{itemsCount} шт. KROOKIES</p>
         </div>
 
-        <div className="flex flex-col gap-3 md:items-center">
-          <span className="inline-flex w-fit justify-center self-start rounded-full bg-[#FFF4F8] px-4 py-2 text-sm font-medium text-[#8A6A62] ring-1 ring-[#E6AECB] md:self-auto">
+        <div className="flex flex-col gap-3 md:items-end md:text-right">
+          <span className="inline-flex w-fit justify-center self-start rounded-full bg-[#FFF4F8] px-4 py-2 text-sm font-medium text-[#8A6A62] ring-1 ring-[#E6AECB] md:self-end">
             {getClientOrderStatusLabel(order.status)}
           </span>
           <p className="text-2xl font-black text-[#54342C]">

@@ -5,7 +5,17 @@ type UpdateAdminCustomerInput = {
   name?: string | null;
   phone?: string;
   email?: string | null;
+  telegramUsername?: string | null;
 };
+
+function normalizeTelegramUsername(value: string | null | undefined) {
+  const username = value?.trim().replace(/^@+/, "") || "";
+  return username ? username.toLowerCase() : null;
+}
+
+function isValidTelegramUsername(value: string) {
+  return /^[a-z0-9_]{5,32}$/i.test(value);
+}
 
 export async function getAdminCustomers() {
   return prisma.user.findMany({
@@ -33,11 +43,13 @@ export async function updateAdminCustomerProfile(userId: string, input: UpdateAd
   const hasName = Object.prototype.hasOwnProperty.call(input, "name");
   const hasPhone = Object.prototype.hasOwnProperty.call(input, "phone");
   const hasEmail = Object.prototype.hasOwnProperty.call(input, "email");
+  const hasTelegramUsername = Object.prototype.hasOwnProperty.call(input, "telegramUsername");
 
   const data: {
     name?: string | null;
     phone?: string;
     email?: string | null;
+    telegramUsername?: string | null;
   } = {};
 
   if (hasName) {
@@ -74,6 +86,15 @@ export async function updateAdminCustomerProfile(userId: string, input: UpdateAd
     }
 
     data.email = email;
+  }
+
+  if (hasTelegramUsername) {
+    const telegramUsername = normalizeTelegramUsername(input.telegramUsername);
+    if (telegramUsername && !isValidTelegramUsername(telegramUsername)) {
+      throw new Error("invalid_telegram_username");
+    }
+
+    data.telegramUsername = telegramUsername;
   }
 
   return prisma.user.update({

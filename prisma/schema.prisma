@@ -49,11 +49,13 @@ enum OtpPurpose {
 model User {
   id        String   @id @default(cuid())
   name      String?
-  phone     String   @unique
+  phone     String?  @unique
   email     String?
+  telegramUsername String?
   role      UserRole @default(customer)
   passwordHash String?
   orders    Order[]
+  passwordResetTokens PasswordResetToken[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -196,4 +198,18 @@ model OtpCode {
   @@index([code])
   @@index([expiresAt])
   @@map("otp_codes")
+}
+
+model PasswordResetToken {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash  String   @unique
+  expiresAt  DateTime
+  consumedAt DateTime?
+  createdAt  DateTime @default(now())
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("password_reset_tokens")
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useState } from "react";
-import { User } from "@prisma/client";
+import type { User } from "@prisma/client";
 import { useRouter } from "next/navigation";
 
 function getCustomerMessage(error: string) {
@@ -14,6 +14,8 @@ function getCustomerMessage(error: string) {
       return "Этот номер уже используется другим пользователем";
     case "invalid_email":
       return "Проверьте адрес почты";
+    case "invalid_telegram_username":
+      return "Проверьте username в Telegram";
     default:
       return "Не получилось сохранить данные";
   }
@@ -24,6 +26,7 @@ export function AdminCustomerForm({ user }: { user: User }) {
   const [name, setName] = useState(user.name || "");
   const [phone, setPhone] = useState(user.phone || "");
   const [email, setEmail] = useState(user.email || "");
+  const [telegramUsername, setTelegramUsername] = useState(user.telegramUsername || "");
   const [message, setMessage] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -40,6 +43,7 @@ export function AdminCustomerForm({ user }: { user: User }) {
           name,
           phone,
           email: email || null,
+          telegramUsername: telegramUsername.trim() || null,
         }),
       });
 
@@ -63,7 +67,7 @@ export function AdminCustomerForm({ user }: { user: User }) {
     <form onSubmit={submit} className="rounded-3xl bg-[#FFFFFF] p-6 shadow-lg ring-1 ring-black/5 md:p-8">
       <h1 className="text-4xl font-black text-[#54342C]">Данные пользователя</h1>
       <p className="mt-4 max-w-2xl leading-7 text-[#54342C]">
-        Здесь администратор может обновить имя, телефон и почту пользователя
+        Здесь администратор может обновить имя, телефон, почту и Telegram пользователя
       </p>
 
       <div className="mt-8 grid gap-5 md:grid-cols-2">
@@ -92,6 +96,19 @@ export function AdminCustomerForm({ user }: { user: User }) {
             value={email}
             onChange={(event) => setEmail(event.target.value)}
             inputMode="email"
+            className="w-full rounded-2xl border border-[#E6AECB] bg-white px-4 py-3 text-[#54342C] outline-none focus:border-[#54342C]"
+          />
+        </label>
+
+        <label className="block md:col-span-2">
+          <span className="mb-2 block text-sm font-semibold text-[#54342C]">
+            Telegram username
+          </span>
+          <input
+            value={telegramUsername}
+            onChange={(event) => setTelegramUsername(event.target.value)}
+            placeholder="@username"
+            autoComplete="off"
             className="w-full rounded-2xl border border-[#E6AECB] bg-white px-4 py-3 text-[#54342C] outline-none focus:border-[#54342C]"
           />
         </label>

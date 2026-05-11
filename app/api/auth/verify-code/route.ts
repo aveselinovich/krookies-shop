@@ -23,14 +23,11 @@ export async function POST(request: NextRequest) {
           name: user.name,
           phone: user.phone,
           email: user.email,
+          telegramUsername: user.telegramUsername,
           role: sessionRole,
         },
       });
     };
-
-    if (code === "1111") {
-      return loginByPhone(phone);
-    }
 
     const verified = await verifyOtpCode(phone, code);
     return loginByPhone(verified.phone);

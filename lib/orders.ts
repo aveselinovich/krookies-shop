@@ -1,5 +1,8 @@
 import { DeliveryStatus, OrderStatus, PaymentStatus } from "@prisma/client";
+import { parseDeliveryAddress } from "@/lib/address";
+import { findBestDadataAddressSuggestion } from "@/lib/dadata-address";
 import { prisma } from "@/lib/prisma";
+import { isDeliveryDateTooEarly } from "@/lib/delivery-date";
 import { normalizePhone, validatePhone } from "@/lib/phone";
 import { createYookassaPayment, YookassaWebhookBody, yookassaAmountToKopecks } from "@/lib/yookassa";
 import { notifyTelegramSubscribersAboutOrder } from "@/lib/telegram";
@@ -10,10 +13,10 @@ type CreateOrderInput = {
     city: string;
     street: string;
     house: string;
+    addressLine?: string;
     apartment?: string;
     entrance?: string;
     floor?: string;
-    intercom?: string;
     desiredDate?: string;
     desiredSlot?: string;
     comment?: string;
@@ -22,10 +25,7 @@ type CreateOrderInput = {
   items: { productId: string; slug?: string; quantity: number }[];
 };
 
-const CUSTOMER_CANCELLABLE_ORDER_STATUSES: OrderStatus[] = [
-  "pending_confirmation",
-  "pending_payment",
-];
+const CUSTOMER_CANCELLABLE_ORDER_STATUSES: OrderStatus[] = ["pending_confirmation", "pending_payment"];
 
 export function canCustomerCancelOrder(status: OrderStatus, paymentStatus: PaymentStatus) {
   return CUSTOMER_CANCELLABLE_ORDER_STATUSES.includes(status) && paymentStatus === "pending";
@@ -41,9 +41,15 @@ export async function createOrder(input: CreateOrderInput) {
   if (!customerName) throw new Error("customer_name_required");
   if (!validatePhone(customerPhone)) throw new Error("invalid_phone");
   if (customerEmail && !/^\S+@\S+\.\S+$/.test(customerEmail)) throw new Error("invalid_email");
-  if (!input.delivery.city.trim()) throw new Error("delivery_city_required");
-  if (!input.delivery.street.trim()) throw new Error("delivery_street_required");
-  if (!input.delivery.house.trim()) throw new Error("delivery_house_required");
+  const dadataSuggestion = input.delivery.addressLine ? await findBestDadataAddressSuggestion(input.delivery.addressLine) : null;
+  if (dadataSuggestion && !dadataSuggestion.isDeliveryArea) throw new Error("delivery_out_of_area");
+  const parsedAddress = input.delivery.addressLine ? parseDeliveryAddress(input.delivery.addressLine) : null;
+  const deliveryCity = dadataSuggestion?.city || parsedAddress?.city || input.delivery.city.trim();
+  const deliveryStreet = dadataSuggestion?.street || parsedAddress?.street || input.delivery.street.trim();
+  const deliveryHouse = dadataSuggestion?.house || parsedAddress?.house || input.delivery.house.trim();
+  if (!deliveryCity) throw new Error("delivery_city_required");
+  if (!deliveryStreet || !deliveryHouse) throw new Error("invalid_delivery_address");
+  if (isDeliveryDateTooEarly(input.delivery.desiredDate)) throw new Error("delivery_date_too_early");
 
   const normalizedItems = input.items.map((item) => ({
     productId: item.productId,
@@ -102,13 +108,13 @@ export async function createOrder(input: CreateOrderInput) {
       total,
       deliveryProvider: "yandex_manual",
       deliveryPaymentType: "external_yandex_link",
-      deliveryCity: input.delivery.city.trim(),
-      deliveryStreet: input.delivery.street.trim(),
-      deliveryHouse: input.delivery.house.trim(),
+      deliveryCity,
+      deliveryStreet,
+      deliveryHouse,
       deliveryApartment: input.delivery.apartment?.trim() || null,
       deliveryEntrance: input.delivery.entrance?.trim() || null,
       deliveryFloor: input.delivery.floor?.trim() || null,
-      deliveryIntercom: input.delivery.intercom?.trim() || null,
+      deliveryIntercom: null,
       deliveryDesiredDate: input.delivery.desiredDate ? new Date(input.delivery.desiredDate) : null,
       deliveryDesiredSlot: input.delivery.desiredSlot || null,
       deliveryComment: input.delivery.comment?.trim() || null,
@@ -195,11 +201,17 @@ export async function cancelCustomerOrder(userId: string, orderId: string) {
   });
 }
 
-export async function markPaymentLinkSent(orderId: string) {
+export async function setPaymentLinkSent(orderId: string, sent: boolean) {
   const order = await prisma.order.findUnique({ where: { id: orderId }, include: { payment: true } });
   if (!order) throw new Error("order_not_found");
   if (!order.payment?.paymentUrl) throw new Error("payment_link_not_found");
-  return prisma.order.update({ where: { id: orderId }, data: { paymentLinkSent: true, paymentLinkSentAt: new Date() } });
+  return prisma.order.update({
+    where: { id: orderId },
+    data: {
+      paymentLinkSent: sent,
+      paymentLinkSentAt: sent ? new Date() : null,
+    },
+  });
 }
 
 export async function createOrderPaymentLink(orderId: string) {
@@ -237,6 +249,56 @@ export async function createOrderPaymentLink(orderId: string) {
   });
 
   return { paymentUrl: updatedOrder.payment?.paymentUrl, orderStatus: updatedOrder.status, alreadyExists: false };
+}
+
+export async function saveManualOrderPaymentLink(orderId: string, paymentUrl: string) {
+  const normalizedPaymentUrl = paymentUrl.trim();
+  if (!normalizedPaymentUrl) throw new Error("payment_link_required");
+
+  const order = await prisma.order.findUnique({
+    where: { id: orderId },
+    include: { payment: true },
+  });
+  if (!order) throw new Error("order_not_found");
+  if (order.status !== "pending_confirmation" && order.status !== "pending_payment") {
+    throw new Error("order_must_allow_payment_link");
+  }
+  if (order.paymentStatus === "paid") {
+    throw new Error("order_already_paid");
+  }
+
+  const updatedOrder = await prisma.order.update({
+    where: { id: order.id },
+    data: {
+      status: "pending_payment",
+      paymentStatus: "pending",
+      paymentLinkSent: false,
+      paymentLinkSentAt: null,
+      payment: order.payment
+        ? {
+            update: {
+              paymentUrl: normalizedPaymentUrl,
+              status: "pending",
+              amount: order.total,
+            },
+          }
+        : {
+            create: {
+              provider: "manual_link",
+              status: "pending",
+              amount: order.total,
+              currency: "RUB",
+              paymentUrl: normalizedPaymentUrl,
+            },
+          },
+    },
+    include: { payment: true },
+  });
+
+  return {
+    paymentUrl: updatedOrder.payment?.paymentUrl,
+    orderStatus: updatedOrder.status,
+  };
 }
 
 export async function handleYookassaWebhook(body: YookassaWebhookBody) {

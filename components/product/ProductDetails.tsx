@@ -21,10 +21,10 @@ export function ProductDetails({ product }: ProductDetailsProps) {
         <p className="mt-4 text-base leading-7 text-[#54342C] sm:text-lg sm:leading-8">{product.shortDescription}</p>
       ) : null}
 
-      <div className="mt-6 flex flex-col items-start gap-4 sm:flex-row sm:flex-wrap sm:items-center">
-        <Price price={product.price} oldPrice={product.oldPrice} className="text-3xl font-black sm:text-4xl md:text-5xl" />
+      <div className="mt-6 flex w-full items-center justify-between gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+        <Price price={product.price} oldPrice={product.oldPrice} className="text-[28px] font-black sm:text-4xl md:text-5xl" />
         {product.weight ? (
-          <span className="rounded-full bg-[#FFF4F8] px-5 py-3 text-base font-bold text-[#54342C] sm:text-lg md:text-xl">
+          <span className="shrink-0 rounded-full bg-[#FFF4F8] px-4 py-2 text-sm font-bold text-[#54342C] sm:px-5 sm:py-3 sm:text-lg md:text-xl">
             {formatProductWeight(product.weight)}
           </span>
         ) : null}
@@ -47,13 +47,6 @@ export function ProductDetails({ product }: ProductDetailsProps) {
             Нет в наличии
           </button>
         )}
-      </div>
-
-      <div className="mt-8 border-t border-[#E6AECB] pt-8">
-        <h2 className="text-xl font-semibold text-[#54342C]">Описание</h2>
-        <p className="mt-3 leading-7 text-[#54342C]">
-          {product.description || product.shortDescription}
-        </p>
       </div>
 
       {product.composition ? (

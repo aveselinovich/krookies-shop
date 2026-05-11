@@ -52,21 +52,21 @@ export function CartItem({ item, onQuantityChange, onRemove }: CartItemProps) {
   }
 
   return (
-    <div className="rounded-[34px] bg-[#FFFFFF] p-4 shadow-[0_24px_60px_rgba(84,52,44,0.08)] ring-1 ring-[#EFDCCB] md:rounded-3xl md:p-5 md:shadow-lg md:ring-black/5">
+    <div className="rounded-[30px] bg-[#FFFFFF] p-3.5 shadow-[0_24px_60px_rgba(84,52,44,0.08)] ring-1 ring-[#EFDCCB] md:rounded-3xl md:p-5 md:shadow-lg md:ring-black/5">
       <div className="relative md:hidden">
         <button
           type="button"
           onClick={() => onRemove(item.productId)}
-          className="absolute right-0 top-0 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-[#FFF1F6] text-[#54342C]"
+          className="absolute right-0 top-0 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-[#FFF1F6] text-[#54342C]"
           aria-label="Удалить товар"
         >
-          <XIcon size={20} strokeWidth={2.4} />
+          <XIcon size={18} strokeWidth={2.4} />
         </button>
 
-        <div className="grid grid-cols-[132px_minmax(0,1fr)] items-start gap-4">
+        <div className="grid grid-cols-[96px_minmax(0,1fr)] items-start gap-3">
           <Link
             href={`/product/${item.slug}`}
-            className="relative h-[188px] overflow-hidden rounded-[30px] bg-[#FFF4F8]"
+            className="relative h-24 overflow-hidden rounded-[22px] bg-[#FFF4F8]"
           >
             {item.imageUrl ? (
               <Image
@@ -74,7 +74,7 @@ export function CartItem({ item, onQuantityChange, onRemove }: CartItemProps) {
                 alt={item.title}
                 fill
                 className="object-contain p-2"
-                sizes="132px"
+                sizes="96px"
               />
             ) : (
               <div className="flex h-full items-center justify-center text-xs text-[#54342C]">
@@ -83,67 +83,52 @@ export function CartItem({ item, onQuantityChange, onRemove }: CartItemProps) {
             )}
           </Link>
 
-          <div className="min-w-0 pt-12">
+          <div className="relative min-w-0 pr-[92px] pt-0.5">
             <Link href={`/product/${item.slug}`}>
-              <h2 className="max-w-full break-words text-[22px] font-black leading-[1.08] text-[#54342C] [overflow-wrap:anywhere]">
+              <h2 className="max-w-full break-words text-[15px] font-black leading-[1.08] text-[#54342C] [overflow-wrap:anywhere]">
                 {item.title}
               </h2>
             </Link>
-            <p
-              className="mt-4 overflow-hidden text-[14px] leading-6 text-[#54342C] opacity-80"
-              style={{
-                display: "-webkit-box",
-                WebkitLineClamp: 2,
-                WebkitBoxOrient: "vertical",
-              }}
-            >
-              {truncateDescription(
-                item.shortDescription || "Печенье KROOKIES с фирменной начинкой"
-              )}
+            <p className="mt-2.5 text-[11px] leading-4 text-[#54342C] opacity-65">
+              {formatPrice(item.price)} / шт.
             </p>
-          </div>
-        </div>
 
-        <div className="mt-5 rounded-[22px] bg-[linear-gradient(180deg,rgba(255,244,248,0.85)_0%,rgba(255,249,251,0.95)_100%)] px-4 py-4 text-center ring-1 ring-[#F7DCE5]">
-          <p className="text-[28px] font-black leading-none text-[#54342C]">
-            {formatPrice(item.price * item.quantity)}
-          </p>
-          <div className="mx-auto mt-3 h-[3px] w-10 rounded-full bg-[#F3C9D4]" />
-          <p className="mt-3 text-[15px] text-[#54342C]">
-            Цена за штуку {formatPrice(item.price)}
-          </p>
-        </div>
+            <div className="mt-2 flex items-end justify-between gap-2">
+              <p className="min-w-0 text-[18px] font-black leading-none text-[#54342C]">
+                {formatPrice(item.price * item.quantity)}
+              </p>
+            </div>
 
-        <div className="mt-5 flex items-center gap-3">
-          <div className="flex flex-1 items-center overflow-hidden rounded-full border border-[#E6CFB6] bg-white">
-            <button
-              type="button"
-              onClick={() => changeQuantity(item.quantity - 1)}
-              className="flex h-12 w-[30%] min-w-[58px] items-center justify-center text-[24px] font-medium text-[#54342C]"
-              aria-label="Уменьшить количество"
-            >
-              −
-            </button>
+            <div className="absolute bottom-[-0.45rem] right-0 flex shrink-0 items-center overflow-hidden rounded-full border border-[#E6CFB6] bg-white">
+              <button
+                type="button"
+                onClick={() => changeQuantity(item.quantity - 1)}
+                className="flex h-8 w-8 items-center justify-center text-[16px] font-medium text-[#54342C]"
+                aria-label="Уменьшить количество"
+              >
+                −
+              </button>
 
-            <input
-              type="text"
-              inputMode="numeric"
-              value={inputValue}
-              onChange={handleInputChange}
-              onBlur={handleInputBlur}
-              className="h-12 w-full border-x border-[#E6CFB6] bg-white px-2 text-center text-[24px] font-black text-[#54342C] outline-none"
-              aria-label="Количество товара"
-            />
+              <input
+                type="text"
+                inputMode="numeric"
+                value={inputValue}
+                onChange={handleInputChange}
+                onBlur={handleInputBlur}
+                className="h-8 w-10 border-x border-[#E6CFB6] bg-white px-0.5 text-center text-[11px] font-black tabular-nums tracking-tight text-[#54342C] outline-none"
+                aria-label="Количество товара"
+              />
 
-            <button
-              type="button"
-              onClick={() => changeQuantity(item.quantity + 1)}
-              disabled={item.quantity >= MAX_CART_ITEM_QUANTITY}
-              className="flex h-12 w-[30%] min-w-[58px] items-center justify-center text-[24px] font-medium text-[#54342C]"
-              aria-label="Увеличить количество"
-            >
-              +
-            </button>
+              <button
+                type="button"
+                onClick={() => changeQuantity(item.quantity + 1)}
+                disabled={item.quantity >= MAX_CART_ITEM_QUANTITY}
+                className="flex h-8 w-8 items-center justify-center text-[16px] font-medium text-[#54342C]"
+                aria-label="Увеличить количество"
+              >
+                +
+              </button>
+            </div>
           </div>
         </div>
       </div>

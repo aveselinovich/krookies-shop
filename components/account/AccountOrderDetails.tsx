@@ -1,10 +1,26 @@
 import { Order, OrderItem, Payment } from "@prisma/client";
 import { formatPrice } from "@/lib/money";
-import { getClientOrderStatusLabel } from "@/components/account/OrderProgress";
+import { OrderProgress } from "@/components/account/OrderProgress";
 import { AccountCancelOrderButton } from "@/components/account/AccountCancelOrderButton";
+import { RepeatOrderButton } from "@/components/account/RepeatOrderButton";
 import { canCustomerCancelOrder } from "@/lib/orders";
+import { CartItem } from "@/types/cart";
 
-type FullOrder = Order & { items: OrderItem[]; payment: Payment | null };
+type FullOrder = Order & {
+  items: (OrderItem & {
+    product: {
+      id: string;
+      title: string;
+      slug: string;
+      shortDescription: string;
+      imageUrl: string;
+      price: number;
+      isAvailable: boolean;
+      isPublished: boolean;
+    } | null;
+  })[];
+  payment: Payment | null;
+};
 
 function formatDate(date: Date | null) {
   return date
@@ -42,6 +58,17 @@ function getClientStatusText(order: FullOrder) {
 
 export function AccountOrderDetails({ order }: { order: FullOrder }) {
   const canCancelOrder = canCustomerCancelOrder(order.status, order.paymentStatus);
+  const repeatOrderItems: CartItem[] = order.items
+    .filter((item) => item.product?.isAvailable && item.product?.isPublished)
+    .map((item) => ({
+      productId: item.product!.id,
+      title: item.product!.title,
+      shortDescription: item.product!.shortDescription,
+      slug: item.product!.slug,
+      imageUrl: item.product!.imageUrl,
+      price: item.product!.price,
+      quantity: item.quantity,
+    }));
   const address = [
     order.deliveryCity,
     order.deliveryStreet,
@@ -56,7 +83,7 @@ export function AccountOrderDetails({ order }: { order: FullOrder }) {
       <section className="rounded-3xl bg-[#FFFFFF] p-6 shadow-lg ring-1 ring-black/5 md:p-8">
         <div className="flex flex-col justify-between gap-5 md:flex-row md:items-start">
           <div>
-            <h1 className="text-3xl sm:text-4xl font-black text-[#54342C]">
+            <h1 className="text-3xl font-black text-[#54342C] sm:text-4xl">
               Заказ #{order.orderNumber}
             </h1>
             <p className="mt-3 text-[#54342C]">Создан: {formatDateTime(order.createdAt)}</p>
@@ -71,21 +98,20 @@ export function AccountOrderDetails({ order }: { order: FullOrder }) {
         </div>
 
         <div className="mt-6">
-          <span className="inline-flex w-fit rounded-full bg-[#FFF4F8] px-4 py-2 text-sm font-medium text-[#8A6A62] ring-1 ring-[#E6AECB]">
-            {getClientOrderStatusLabel(order.status)}
-          </span>
+          <OrderProgress status={order.status} />
         </div>
-
-        {canCancelOrder ? (
-          <div className="mt-5">
-            <AccountCancelOrderButton orderId={order.id} />
-          </div>
-        ) : null}
 
         <div className="mt-6 rounded-[24px] bg-[#FFF4F8] p-5">
           <h2 className="font-semibold text-[#54342C]">Что происходит?</h2>
           <p className="mt-2 leading-7 text-[#54342C]">{getClientStatusText(order)}</p>
         </div>
+
+        {canCancelOrder || repeatOrderItems.length ? (
+          <div className="mt-5 flex flex-col items-center justify-center gap-3 sm:flex-row">
+            <RepeatOrderButton items={repeatOrderItems} />
+            {canCancelOrder ? <AccountCancelOrderButton orderId={order.id} variant="text" /> : null}
+          </div>
+        ) : null}
       </section>
 
       <section className="rounded-3xl bg-[#FFFFFF] p-6 shadow-lg ring-1 ring-black/5">

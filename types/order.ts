@@ -3,10 +3,10 @@ export type CheckoutDelivery = {
   city: string;
   street: string;
   house: string;
+  addressLine?: string;
   apartment?: string;
   entrance?: string;
   floor?: string;
-  intercom?: string;
   desiredDate?: string;
   desiredSlot?: string;
   comment?: string;

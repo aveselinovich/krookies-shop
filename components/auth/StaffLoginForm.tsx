@@ -99,7 +99,7 @@ export function StaffLoginForm({ nextUrl }: { nextUrl?: string }) {
 
       <div className="mt-6 text-center">
         <Link href="/login" className="text-sm font-semibold text-[#54342C] hover:opacity-80">
-          Вернуться ко входу по телефону
+          Вернуться ко входу для клиентов
         </Link>
       </div>
     </div>
