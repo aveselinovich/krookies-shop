@@ -88,6 +88,11 @@ export function StaffLoginForm({ nextUrl }: { nextUrl?: string }) {
               className="absolute right-2 top-1/2 -translate-y-1/2"
             />
           </div>
+          <div className="mt-2 text-right">
+            <Link href="/forgot-password" className="text-sm font-semibold text-[#54342C] hover:opacity-80">
+              Не помню пароль
+            </Link>
+          </div>
         </label>
 
         <Button type="submit" disabled={isLoading} className="w-full">

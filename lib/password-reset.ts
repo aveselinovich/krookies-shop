@@ -72,7 +72,6 @@ export async function requestPasswordReset(email: string) {
   const user = await prisma.user.findFirst({
     where: {
       email: normalizedEmail,
-      role: "customer",
     },
     orderBy: { createdAt: "asc" },
   });

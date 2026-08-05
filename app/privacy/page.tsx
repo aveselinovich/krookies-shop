@@ -18,7 +18,6 @@ export const metadata = {
 export default function PrivacyPage() {
   return (
     <LegalPage
-      eyebrow="KROOKIES PRIVACY"
       title="Политика обработки персональных данных"
       description="Эта политика объясняет, какие данные мы получаем от покупателей KROOKIES, зачем они нужны и как мы с ними работаем."
     >

@@ -1,7 +1,7 @@
 "use client";
 
 import { Product, ProductBadge } from "@prisma/client";
-import { FormEvent, useState } from "react";
+import { ChangeEvent, FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import { normalizeWeightValue } from "@/lib/product-weight";
 
@@ -35,6 +35,16 @@ function getProductFormMessage(error: string) {
       return "Добавьте фото товара";
     case "product_price_invalid":
       return "Проверьте цену";
+    case "image_file_required":
+      return "Выберите фотографию";
+    case "image_type_not_supported":
+      return "Поддерживаются JPG, PNG и WebP";
+    case "image_too_large":
+      return "Фотография должна быть не больше 4 МБ";
+    case "image_storage_not_configured":
+      return "Хранилище фотографий пока не подключено";
+    case "image_upload_failed":
+      return "Не получилось загрузить фотографию";
     default:
       return "Не получилось сохранить товар";
   }
@@ -58,7 +68,40 @@ export function AdminProductForm({ mode, product }: AdminProductFormProps) {
   const [isAvailable, setIsAvailable] = useState(product?.isAvailable ?? true);
   const [isPublished, setIsPublished] = useState(product?.isPublished ?? true);
   const [isSaving, setIsSaving] = useState(false);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+
+  async function uploadImage(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+
+    if (!file) return;
+
+    setIsUploadingImage(true);
+    setMessage(null);
+
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const response = await fetch("/api/admin/uploads/product-image", {
+        method: "POST",
+        body: formData,
+      });
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || "image_upload_failed");
+      }
+
+      setImageUrl(result.url);
+      setMessage("Фотография загружена. Сохраните товар, чтобы применить её");
+    } catch (error) {
+      setMessage(getProductFormMessage(error instanceof Error ? error.message : "image_upload_failed"));
+    } finally {
+      setIsUploadingImage(false);
+    }
+  }
 
   async function submitForm(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -173,23 +216,35 @@ export function AdminProductForm({ mode, product }: AdminProductFormProps) {
           <img src={imageUrl} alt={title || "Товар"} className="h-56 w-full object-cover" />
         </div>
 
-        <label className="block">
-          <span className="mb-2 block text-sm font-semibold text-[#54342C]">Путь к фото товара</span>
-          <input value={imageUrl} onChange={(event) => setImageUrl(event.target.value)} placeholder="/images/products/example.jpg" className={input} />
+        <div className="block">
+          <label htmlFor="product-image-url" className="mb-2 block text-sm font-semibold text-[#54342C]">Ссылка на фото товара</label>
+          <input id="product-image-url" value={imageUrl} onChange={(event) => setImageUrl(event.target.value)} placeholder="https://... или /images/products/photo.jpg" className={input} />
+
+          <label className={`mt-3 inline-flex cursor-pointer items-center justify-center rounded-full bg-[#FFF4F8] px-5 py-3 text-sm font-semibold text-[#54342C] ring-1 ring-[#E6AECB] ${isUploadingImage ? "pointer-events-none opacity-60" : ""}`}>
+            {isUploadingImage ? "Загружаем фотографию..." : "Загрузить фотографию"}
+            <input
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              onChange={uploadImage}
+              disabled={isUploadingImage}
+              className="sr-only"
+            />
+          </label>
+
           <select value={imageUrl} onChange={(event) => setImageUrl(event.target.value)} className={`${input} mt-3`}>
             {PRODUCT_IMAGES.map(([path, label]) => <option key={path} value={path}>{label}</option>)}
             {!PRODUCT_IMAGES.some(([path]) => path === imageUrl) ? <option value={imageUrl}>Текущий путь</option> : null}
           </select>
           <p className="mt-3 text-sm leading-6 text-[#54342C]">
-            Файл должен быть добавлен в <code>public/images/products</code> и отправлен в GitHub. Укажите путь вида <code>/images/products/photo.jpg</code>.
+            Можно вставить прямую ссылку или загрузить JPG, PNG либо WebP размером до 4 МБ. Загруженные фотографии сохраняются на сервере Vercel.
           </p>
-        </label>
+        </div>
       </div>
 
       <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
         <button
           type="submit"
-          disabled={isSaving}
+          disabled={isSaving || isUploadingImage}
           className="rounded-full bg-[#54342C] px-6 py-3 text-sm font-semibold text-white disabled:opacity-50"
         >
           {isSaving ? "Сохраняем..." : mode === "create" ? "Добавить товар" : "Сохранить товар"}

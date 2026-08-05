@@ -19,7 +19,6 @@ export const metadata = {
 export default function RequisitesPage() {
   return (
     <LegalPage
-      eyebrow="KROOKIES LEGAL"
       title="Реквизиты продавца"
       description="На этой странице указаны основные сведения о продавце и контакты для вопросов по заказам, персональным данным и качеству продукции."
     >

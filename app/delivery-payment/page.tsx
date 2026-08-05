@@ -16,7 +16,6 @@ export const metadata = {
 export default function DeliveryPaymentPage() {
   return (
     <LegalPage
-      eyebrow="KROOKIES ORDER FLOW"
       title="Оплата, доставка и возврат"
       description="Здесь описан реальный порядок работы заказа в KROOKIES: от заявки на сайте до подтверждения, оплаты и доставки."
     >

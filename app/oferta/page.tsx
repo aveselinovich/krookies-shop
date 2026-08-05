@@ -16,7 +16,6 @@ export const metadata = {
 export default function OfertaPage() {
   return (
     <LegalPage
-      eyebrow="KROOKIES TERMS"
       title="Публичная оферта"
       description="Настоящий документ определяет условия оформления и исполнения заказов через сайт KROOKIES."
     >

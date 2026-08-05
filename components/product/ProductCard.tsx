@@ -52,7 +52,7 @@ export function ProductCard({ product, centerDesktopActions = false }: ProductCa
             <Price price={product.price} oldPrice={product.oldPrice} className="shrink-0 self-start text-right text-[15px] sm:text-base" />
 
             {product.shortDescription ? (
-              <p className="col-start-1 line-clamp-2 min-h-[2.5rem] text-xs leading-5 opacity-80 sm:min-h-[40px] sm:text-sm">
+              <p className="col-span-2 line-clamp-2 min-h-[2.5rem] text-xs leading-5 opacity-80 sm:min-h-[40px] sm:text-sm">
                 {product.shortDescription}
               </p>
             ) : null}

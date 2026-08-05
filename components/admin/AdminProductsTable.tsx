@@ -10,6 +10,15 @@ import { DragHandleIcon } from "@/components/ui/Icons";
 const AUTO_SCROLL_EDGE_OFFSET = 140;
 const AUTO_SCROLL_MAX_STEP = 10;
 
+type MobileDragPreview = {
+  productId: string;
+  pointerX: number;
+  pointerY: number;
+  offsetX: number;
+  offsetY: number;
+  width: number;
+};
+
 function truncateWithDots(text: string, maxLength = 58) {
   if (text.length <= maxLength) return text;
   return `${text.slice(0, maxLength).trimEnd()}...`;
@@ -32,6 +41,7 @@ function reorderListByIds(currentItems: Product[], sourceId: string, targetId: s
 export function AdminProductsTable({ products }: { products: Product[] }) {
   const [items, setItems] = useState(products);
   const [draggedId, setDraggedId] = useState<string | null>(null);
+  const [mobileDragPreview, setMobileDragPreview] = useState<MobileDragPreview | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [isSavingOrder, setIsSavingOrder] = useState(false);
   const itemsRef = useRef(items);
@@ -153,9 +163,22 @@ export function AdminProductsTable({ products }: { products: Product[] }) {
     event.preventDefault();
     event.stopPropagation();
     event.currentTarget.setPointerCapture(event.pointerId);
+    const card = event.currentTarget.closest<HTMLElement>("[data-mobile-product-id]");
+    const cardBounds = card?.getBoundingClientRect();
+
+    if (!cardBounds) return;
+
     dragPointerYRef.current = event.clientY;
     touchDraggedIdRef.current = productId;
     touchStartOrderRef.current = itemsRef.current.map((item) => item.id);
+    setMobileDragPreview({
+      productId,
+      pointerX: event.clientX,
+      pointerY: event.clientY,
+      offsetX: event.clientX - cardBounds.left,
+      offsetY: event.clientY - cardBounds.top,
+      width: cardBounds.width,
+    });
     setDraggedId(productId);
     setMessage(null);
   }
@@ -166,6 +189,11 @@ export function AdminProductsTable({ products }: { products: Product[] }) {
 
     event.preventDefault();
     dragPointerYRef.current = event.clientY;
+    setMobileDragPreview((current) => current ? {
+      ...current,
+      pointerX: event.clientX,
+      pointerY: event.clientY,
+    } : current);
 
     const targetElement = document
       .elementFromPoint(event.clientX, event.clientY)
@@ -176,7 +204,11 @@ export function AdminProductsTable({ products }: { products: Product[] }) {
       return;
     }
 
-    setItems((currentItems) => reorderListByIds(currentItems, sourceId, targetId));
+    setItems((currentItems) => {
+      const nextItems = reorderListByIds(currentItems, sourceId, targetId);
+      itemsRef.current = nextItems;
+      return nextItems;
+    });
   }
 
   function finishMobileDrag() {
@@ -189,6 +221,7 @@ export function AdminProductsTable({ products }: { products: Product[] }) {
     touchDraggedIdRef.current = null;
     touchStartOrderRef.current = [];
     dragPointerYRef.current = null;
+    setMobileDragPreview(null);
     setDraggedId(null);
 
     const nextOrder = nextItems.map((item) => item.id);
@@ -213,16 +246,8 @@ export function AdminProductsTable({ products }: { products: Product[] }) {
           <article
             key={product.id}
             data-mobile-product-id={product.id}
-            draggable={!isSavingOrder}
-            onDragStart={() => {
-              setDraggedId(product.id);
-              setMessage(null);
-            }}
-            onDragEnd={() => setDraggedId(null)}
-            onDragOver={(event) => event.preventDefault()}
-            onDrop={() => handleDrop(product.id)}
-            className={`rounded-2xl bg-[#FFF9FB] p-3 ring-1 ring-[#E6AECB] ${
-              draggedId === product.id ? "opacity-70" : ""
+            className={`rounded-2xl bg-[#FFF9FB] p-3 ring-1 ring-[#E6AECB] transition-[opacity,transform] duration-200 ease-out ${
+              draggedId === product.id ? "scale-[0.98] opacity-20" : ""
             }`}
           >
             <div className="flex items-center gap-3">
@@ -237,7 +262,8 @@ export function AdminProductsTable({ products }: { products: Product[] }) {
                 onPointerMove={handleMobilePointerMove}
                 onPointerUp={finishMobileDrag}
                 onPointerCancel={finishMobileDrag}
-                className="inline-flex h-9 w-9 shrink-0 touch-none items-center justify-center rounded-2xl bg-white text-[#8A6A62] ring-1 ring-[#E6AECB]"
+                aria-label={`Изменить порядок товара ${product.title}`}
+                className="inline-flex h-10 w-10 shrink-0 touch-none select-none items-center justify-center rounded-2xl bg-white text-[#8A6A62] ring-1 ring-[#E6AECB] active:scale-95"
               >
                 <DragHandleIcon size={16} />
               </div>
@@ -252,6 +278,32 @@ export function AdminProductsTable({ products }: { products: Product[] }) {
           </article>
         ))}
       </div>
+
+      {mobileDragPreview ? (() => {
+        const product = items.find((item) => item.id === mobileDragPreview.productId);
+        if (!product) return null;
+
+        return (
+          <div
+            className="pointer-events-none fixed z-[100] rounded-2xl bg-[#FFF9FB] p-3 shadow-2xl ring-2 ring-[#E6AECB] lg:hidden"
+            style={{
+              left: mobileDragPreview.pointerX - mobileDragPreview.offsetX,
+              top: mobileDragPreview.pointerY - mobileDragPreview.offsetY,
+              width: mobileDragPreview.width,
+            }}
+          >
+            <div className="flex items-center gap-3">
+              <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-2xl bg-[#FFF4F8]">
+                <img src={product.imageUrl} alt="" className="h-full w-full object-cover" />
+              </div>
+              <p className="min-w-0 flex-1 text-sm font-semibold text-[#54342C]">{product.title}</p>
+              <div className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-white text-[#8A6A62] ring-1 ring-[#E6AECB]">
+                <DragHandleIcon size={16} />
+              </div>
+            </div>
+          </div>
+        );
+      })() : null}
 
       <div className="hidden overflow-x-auto lg:block">
         <table className="w-full min-w-[900px] border-collapse text-left">

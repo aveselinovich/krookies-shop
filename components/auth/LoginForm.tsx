@@ -122,20 +122,20 @@ export function LoginForm({ nextUrl }: { nextUrl?: string }) {
         </h1>
       </div>
 
-      <div className="mb-6 grid grid-cols-2 gap-2 rounded-3xl bg-[#FFF4F8] p-1">
+      <div className="mb-6 grid grid-cols-2 gap-1.5 rounded-3xl bg-[#FFF4F8] p-1 sm:gap-2">
         <button
           type="button"
           onClick={() => resetForm("login")}
-          className={`rounded-[20px] px-4 py-3 text-sm font-semibold transition ${mode === "login" ? "bg-[#54342C] text-white shadow" : "text-[#54342C]"}`}
+          className={`min-w-0 rounded-[20px] px-2 py-3 text-xs font-semibold transition sm:px-4 sm:text-sm ${mode === "login" ? "bg-[#54342C] text-white shadow" : "text-[#54342C]"}`}
         >
           Войти
         </button>
         <button
           type="button"
           onClick={() => resetForm("register")}
-          className={`rounded-[20px] px-4 py-3 text-sm font-semibold transition ${mode === "register" ? "bg-[#54342C] text-white shadow" : "text-[#54342C]"}`}
+          className={`min-w-0 rounded-[20px] px-2 py-3 text-xs font-semibold transition sm:px-4 sm:text-sm ${mode === "register" ? "bg-[#54342C] text-white shadow" : "text-[#54342C]"}`}
         >
-          Зарегистрироваться
+          Регистрация
         </button>
       </div>
 
