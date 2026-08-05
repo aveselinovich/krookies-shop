@@ -78,10 +78,6 @@ AUTH_SECRET="replace-with-a-long-random-secret"
 ADMIN_PHONE="+79959178862"
 ADMIN_EMAIL="mackacrvena@gmail.com"
 SITE_URL="http://localhost:3000"
-SUPABASE_URL="https://your-project.supabase.co"
-NEXT_PUBLIC_SUPABASE_URL="https://your-project.supabase.co"
-SUPABASE_SERVICE_ROLE_KEY="your-service-role-key"
-SUPABASE_STORAGE_BUCKET="product-images"
 RESEND_API_KEY=""
 EMAIL_FROM="KROOKIES <no-reply@your-domain.ru>"
 TELEGRAM_BOT_TOKEN=""
@@ -104,10 +100,6 @@ DADATA_API_KEY=""
 - `AUTH_SECRET`
 - `ADMIN_EMAIL`
 - `ADMIN_PASSWORD`
-- `SUPABASE_URL`
-- `NEXT_PUBLIC_SUPABASE_URL`
-- `SUPABASE_SERVICE_ROLE_KEY`
-- `SUPABASE_STORAGE_BUCKET`
 
 Если включены соответствующие функции, дополнительно заполнить:
 
@@ -116,3 +108,10 @@ DADATA_API_KEY=""
 - `EMAIL_FROM`
 - `TELEGRAM_*`
 - `DADATA_API_KEY`
+
+## Изображения товаров
+
+Изображения хранятся вместе с проектом в `public/images/products` и публикуются Vercel при deployment.
+Чтобы добавить новое фото, поместите JPG, PNG или WEBP в эту папку, сделайте commit и push,
+а затем укажите в карточке товара путь вида `/images/products/photo.jpg`.
+Загрузка файлов через админку отключена, потому что файловая система Vercel не является постоянным хранилищем.

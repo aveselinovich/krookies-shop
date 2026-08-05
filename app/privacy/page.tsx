@@ -65,7 +65,6 @@ export default function PrivacyPage() {
         <ul className="list-disc space-y-2 pl-6">
           <li>Dadata — для подсказок адреса при вводе;</li>
           <li>Resend — для писем, связанных с доступом к аккаунту и восстановлением пароля;</li>
-          <li>Supabase Storage — для хранения изображений товаров;</li>
           <li>Telegram и WhatsApp — если общение с покупателем ведется через эти каналы.</li>
         </ul>
         <p>

@@ -6,7 +6,7 @@
 - `PostgreSQL` в Docker
 - `nginx` на сервере
 - `Let's Encrypt` для HTTPS
-- `Supabase Storage` остается для картинок товаров
+- изображения товаров хранятся в `public/images/products`
 
 ## 1. Что купить на Beget
 
@@ -32,10 +32,6 @@
 - `AUTH_SECRET`
 - `ADMIN_EMAIL`
 - `ADMIN_PASSWORD`
-- `SUPABASE_URL`
-- `NEXT_PUBLIC_SUPABASE_URL`
-- `SUPABASE_SERVICE_ROLE_KEY`
-- `SUPABASE_STORAGE_BUCKET`
 
 Если используете соответствующие функции:
 
@@ -126,10 +122,6 @@ ADMIN_PHONE="+79690483464"
 ADMIN_EMAIL="YOUR_ADMIN_EMAIL"
 ADMIN_PASSWORD="STRONG_ADMIN_PASSWORD"
 
-SUPABASE_URL="https://your-project.supabase.co"
-NEXT_PUBLIC_SUPABASE_URL="https://your-project.supabase.co"
-SUPABASE_SERVICE_ROLE_KEY="YOUR_SUPABASE_SERVICE_ROLE_KEY"
-SUPABASE_STORAGE_BUCKET="product-images"
 ```
 
 Для генерации `AUTH_SECRET` можно использовать:

@@ -1,6 +1,5 @@
 import { ProductBadge } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { deleteManagedProductImage } from "@/lib/product-image-cleanup";
 import { normalizeWeightValue } from "@/lib/product-weight";
 
 type UpdateAdminProductInput = {
@@ -66,33 +65,6 @@ function validateProductInput(input: UpdateAdminProductInput) {
   if (!input.price || input.price <= 0) throw new Error("product_price_invalid");
 }
 
-async function cleanupOrphanedProductImage(imageUrl: string | null | undefined) {
-  const normalizedImageUrl = imageUrl?.trim();
-
-  if (!normalizedImageUrl) {
-    return;
-  }
-
-  const referencesCount = await prisma.product.count({
-    where: {
-      OR: [{ imageUrl: normalizedImageUrl }, { images: { has: normalizedImageUrl } }],
-    },
-  });
-
-  if (referencesCount > 0) {
-    return;
-  }
-
-  try {
-    await deleteManagedProductImage(normalizedImageUrl);
-  } catch (error) {
-    console.error("product image cleanup failed", {
-      imageUrl: normalizedImageUrl,
-      error,
-    });
-  }
-}
-
 export async function createAdminProduct(input: CreateAdminProductInput) {
   validateProductInput(input);
 
@@ -152,10 +124,6 @@ export async function updateAdminProduct(id: string, input: UpdateAdminProductIn
     },
   });
 
-  if (existingProduct.imageUrl !== nextImageUrl) {
-    await cleanupOrphanedProductImage(existingProduct.imageUrl);
-  }
-
   return product;
 }
 
@@ -174,8 +142,6 @@ export async function deleteAdminProduct(id: string) {
   const product = await prisma.product.delete({
     where: { id },
   });
-
-  await cleanupOrphanedProductImage(existingProduct.imageUrl);
 
   return product;
 }

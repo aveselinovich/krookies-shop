@@ -5,6 +5,14 @@ import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import { normalizeWeightValue } from "@/lib/product-weight";
 
+const PRODUCT_IMAGES = [
+  ["/images/products/basic-cookie.jpg", "Базовый минимум"],
+  ["/images/products/patrik-cookie.jpg", "Девочка с Патриков"],
+  ["/images/products/caramel-cookie.jpg", "Карамельное облачко"],
+  ["/images/products/tropic-cookie.jpg", "Тропический рай"],
+  ["/images/products/chocolate-cookie.jpg", "Шоколадный заяц"],
+] as const;
+
 function priceToRubles(price: number) {
   return String(price / 100);
 }
@@ -15,15 +23,6 @@ function rublesToKopecks(value: string) {
 
 function getProductFormMessage(error: string) {
   switch (error) {
-    case "file_too_large":
-      return "Фото слишком большое. Загрузите файл до 5 МБ";
-    case "unsupported_file_type":
-      return "Поддерживаются только JPG, PNG и WEBP";
-    case "storage_not_configured":
-      return "Загрузка фото пока не настроена в storage";
-    case "storage_upload_failed":
-    case "upload_failed":
-      return "Не получилось загрузить фото";
     case "product_title_required":
       return "Укажите название товара";
     case "product_short_description_required":
@@ -56,31 +55,10 @@ export function AdminProductForm({ mode, product }: AdminProductFormProps) {
   const [badge, setBadge] = useState<ProductBadge | "none">(product?.badge || "none");
   const [price, setPrice] = useState(product ? priceToRubles(product.price) : "550");
   const [imageUrl, setImageUrl] = useState(product?.imageUrl || "/images/products/basic-cookie.jpg");
-  const [imageFile, setImageFile] = useState<File | null>(null);
   const [isAvailable, setIsAvailable] = useState(product?.isAvailable ?? true);
   const [isPublished, setIsPublished] = useState(product?.isPublished ?? true);
   const [isSaving, setIsSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
-
-  async function uploadImageIfNeeded() {
-    if (!imageFile) return imageUrl;
-
-    const formData = new FormData();
-    formData.append("file", imageFile);
-
-    const response = await fetch("/api/admin/upload", {
-      method: "POST",
-      body: formData,
-    });
-
-    const result = await response.json();
-
-    if (!response.ok) {
-      throw new Error(result.error || "upload_failed");
-    }
-
-    return result.imageUrl as string;
-  }
 
   async function submitForm(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -88,7 +66,7 @@ export function AdminProductForm({ mode, product }: AdminProductFormProps) {
     setMessage(null);
 
     try {
-      const nextImageUrl = await uploadImageIfNeeded();
+      const nextImageUrl = imageUrl.trim();
       const url = mode === "create" ? "/api/admin/products" : `/api/admin/products/${product.id}`;
       const method = mode === "create" ? "POST" : "PATCH";
 
@@ -114,7 +92,6 @@ export function AdminProductForm({ mode, product }: AdminProductFormProps) {
       if (!response.ok) throw new Error(result.error || "product_save_failed");
 
       setImageUrl(nextImageUrl);
-      setImageFile(null);
 
       if (mode === "create") {
         router.push("/admin/products");
@@ -197,19 +174,14 @@ export function AdminProductForm({ mode, product }: AdminProductFormProps) {
         </div>
 
         <label className="block">
-          <span className="mb-2 block text-sm font-semibold text-[#54342C]">Фото товара</span>
-          <input
-            type="file"
-            accept="image/jpeg,image/png,image/webp"
-            onChange={(event) => {
-              const file = event.target.files?.[0] || null;
-              setImageFile(file);
-              if (file) setImageUrl(URL.createObjectURL(file));
-            }}
-            className="block w-full rounded-2xl border border-dashed border-[#D8B99B] bg-white px-4 py-6 text-sm text-[#54342C]"
-          />
+          <span className="mb-2 block text-sm font-semibold text-[#54342C]">Путь к фото товара</span>
+          <input value={imageUrl} onChange={(event) => setImageUrl(event.target.value)} placeholder="/images/products/example.jpg" className={input} />
+          <select value={imageUrl} onChange={(event) => setImageUrl(event.target.value)} className={`${input} mt-3`}>
+            {PRODUCT_IMAGES.map(([path, label]) => <option key={path} value={path}>{label}</option>)}
+            {!PRODUCT_IMAGES.some(([path]) => path === imageUrl) ? <option value={imageUrl}>Текущий путь</option> : null}
+          </select>
           <p className="mt-3 text-sm leading-6 text-[#54342C]">
-            Загрузите JPG, PNG или WEBP до 5 МБ. После сохранения фото появится на витрине и в карточке товара
+            Файл должен быть добавлен в <code>public/images/products</code> и отправлен в GitHub. Укажите путь вида <code>/images/products/photo.jpg</code>.
           </p>
         </label>
       </div>
