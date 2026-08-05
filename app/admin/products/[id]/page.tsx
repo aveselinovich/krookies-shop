@@ -8,9 +8,10 @@ import { requireAdmin } from "@/lib/permissions";
 
 export const dynamic = "force-dynamic";
 
-export default async function AdminProductPage({ params }: { params: { id: string } }) {
+export default async function AdminProductPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   const user = await requireAdmin();
-  const product = await getAdminProductById(params.id);
+  const product = await getAdminProductById(id);
 
   if (!product) notFound();
 

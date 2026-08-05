@@ -7,13 +7,14 @@ import { SiteHeader } from "@/components/layout/SiteHeader";
 import { SiteFooter } from "@/components/layout/SiteFooter";
 import { getProductBySlug, getPublishedProducts } from "@/lib/products";
 
-type ProductPageProps = { params: { slug: string } };
+type ProductPageProps = { params: Promise<{ slug: string }> };
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 export async function generateMetadata({ params }: ProductPageProps) {
-  const product = await getProductBySlug(params.slug);
+  const { slug } = await params;
+  const product = await getProductBySlug(slug);
   if (!product) return { title: "Товар не найден" };
   return {
     title: `${product.title} — KROOKIES`,
@@ -22,7 +23,8 @@ export async function generateMetadata({ params }: ProductPageProps) {
 }
 
 export default async function ProductPage({ params }: ProductPageProps) {
-  const product = await getProductBySlug(params.slug);
+  const { slug } = await params;
+  const product = await getProductBySlug(slug);
   if (!product) notFound();
 
   const otherProducts = (await getPublishedProducts())

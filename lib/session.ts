@@ -53,7 +53,7 @@ function shouldUseSecureCookies() {
 }
 
 export async function setSessionCookie(payload: SessionPayload) {
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
   cookieStore.set(SESSION_COOKIE_NAME, createSessionToken(payload), {
     httpOnly: true,
     sameSite: "lax",
@@ -64,13 +64,13 @@ export async function setSessionCookie(payload: SessionPayload) {
 }
 
 export async function getSession() {
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
   const token = cookieStore.get(SESSION_COOKIE_NAME)?.value;
   return token ? readSessionToken(token) : null;
 }
 
 export async function clearSessionCookie() {
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
   cookieStore.set(SESSION_COOKIE_NAME, "", {
     httpOnly: true,
     sameSite: "lax",

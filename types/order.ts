@@ -13,6 +13,7 @@ export type CheckoutDelivery = {
 };
 export type CreateOrderItem = { productId: string; quantity: number };
 export type CreateOrderPayload = {
+  idempotencyKey: string;
   customer: CheckoutCustomer;
   delivery: CheckoutDelivery;
   comment?: string;

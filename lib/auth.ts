@@ -31,6 +31,10 @@ export async function findOrCreateUserByPhone(phone: string) {
       },
     });
 
+    await prisma.order.updateMany({
+      where: { userId: null, customerPhone: normalizedPhone },
+      data: { userId: user.id },
+    });
     return { user, isNew: false };
   }
 
@@ -43,6 +47,10 @@ export async function findOrCreateUserByPhone(phone: string) {
     },
   });
 
+  await prisma.order.updateMany({
+    where: { userId: null, customerPhone: normalizedPhone },
+    data: { userId: user.id },
+  });
   return { user, isNew: true };
 }
 

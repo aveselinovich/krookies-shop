@@ -1,6 +1,6 @@
 "use client";
 
-import type { Order, OrderItem, OrderStatus, Payment, User } from "@prisma/client";
+import type { Order, OrderItem, OrderStatus, Payment, PaymentStatus, User } from "@prisma/client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { formatPrice } from "@/lib/money";
@@ -301,11 +301,11 @@ export function AdminOrderItems({ order }: { order: FullOrder }) {
 }
 
 export function AdminPaymentBlock({ order }: { order: FullOrder }) {
+  const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [paymentUrl, setPaymentUrl] = useState(order.payment?.paymentUrl || "");
-  const [currentStatus, setCurrentStatus] = useState<OrderStatus>(order.status);
-  const [isPaymentLinkSent, setIsPaymentLinkSent] = useState(order.paymentLinkSent);
+  const [paymentStatus, setPaymentStatus] = useState<PaymentStatus>(order.paymentStatus);
   const savedPaymentUrl = paymentUrl.trim();
   const paymentMessage = savedPaymentUrl ? buildPaymentMessage(order, savedPaymentUrl) : "";
   const text = `Оплата печенья\nСумма: ${formatPrice(order.total)}\nСтатус оплаты: ${order.paymentStatus}\nСсылка: ${savedPaymentUrl || "—"}`;
@@ -335,7 +335,6 @@ export function AdminPaymentBlock({ order }: { order: FullOrder }) {
       const j = await r.json();
       if (!r.ok) throw new Error(j.error);
       setPaymentUrl(j.paymentUrl || savedPaymentUrl);
-      setCurrentStatus("pending_payment");
       setMessage("Ссылка на оплату сохранена");
     } catch (error) {
       const code = error instanceof Error ? error.message : "payment_link_save_failed";
@@ -345,20 +344,20 @@ export function AdminPaymentBlock({ order }: { order: FullOrder }) {
     }
   }
 
-  async function markSent() {
+  async function savePaymentStatus() {
     setIsLoading(true);
+    setMessage(null);
     try {
-      const nextSent = !isPaymentLinkSent;
-      const r = await fetch(`/api/admin/orders/${order.id}/payment-link-sent`, {
+      const r = await fetch(`/api/admin/orders/${order.id}/payment-status`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sent: nextSent }),
+        body: JSON.stringify({ paymentStatus }),
       });
       if (!r.ok) throw new Error();
-      setIsPaymentLinkSent(nextSent);
-      setMessage(nextSent ? "Отметили, что ссылка отправлена" : "Убрали отметку об отправке");
+      setMessage("Статус оплаты сохранён вручную");
+      router.refresh();
     } catch {
-      setMessage("Не получилось отметить отправку");
+      setMessage("Не получилось изменить статус оплаты");
     } finally {
       setIsLoading(false);
     }
@@ -380,9 +379,21 @@ export function AdminPaymentBlock({ order }: { order: FullOrder }) {
 
       <div className="mt-5 space-y-4">
         <p className="text-2xl font-black text-[#54342C]">{formatPrice(order.total)}</p>
+        <div className="rounded-[24px] bg-[#FFF4F8] p-5">
+          <label className="mb-2 block text-sm font-semibold text-[#54342C]">Статус оплаты — меняется администратором вручную</label>
+          <div className="flex flex-col gap-3 sm:flex-row">
+            <select value={paymentStatus} onChange={(event) => setPaymentStatus(event.target.value as PaymentStatus)} className="flex-1 rounded-2xl border border-[#E6AECB] bg-white px-4 py-3 text-[#54342C] outline-none">
+              <option value="pending">Ожидает оплаты</option>
+              <option value="paid">Оплачен</option>
+              <option value="failed">Ошибка оплаты</option>
+              <option value="refunded">Возврат</option>
+            </select>
+            <button type="button" onClick={savePaymentStatus} disabled={isLoading} className="rounded-full bg-[#54342C] px-5 py-3 text-sm font-semibold text-white disabled:opacity-50">Сохранить статус</button>
+          </div>
+        </div>
         <div>
           <label className="mb-2 block text-sm font-semibold text-[#54342C]">
-            Ссылка на оплату
+            Ссылка на оплату, подготовленная администратором
           </label>
           <textarea
             value={paymentUrl}

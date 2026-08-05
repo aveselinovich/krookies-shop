@@ -19,7 +19,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "otp_send_failed" },
-      { status: 400 }
+      { status: error instanceof Error && error.message === "rate_limit_exceeded" ? 429 : 400 }
     );
   }
 }

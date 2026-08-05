@@ -263,6 +263,14 @@ export function CheckoutForm() {
       if (!parsedAddress) throw new Error("invalid_delivery_address");
 
       const payload = {
+        idempotencyKey: (() => {
+          const storageKey = "krookies_checkout_idempotency_key";
+          const existing = window.sessionStorage.getItem(storageKey);
+          if (existing) return existing;
+          const created = crypto.randomUUID();
+          window.sessionStorage.setItem(storageKey, created);
+          return created;
+        })(),
         customer: {
           name: contact.name.trim(),
           phone: contact.phone.trim(),
@@ -311,6 +319,7 @@ export function CheckoutForm() {
 
       try {
         clearCart();
+        window.sessionStorage.removeItem("krookies_checkout_idempotency_key");
       } catch {
         // If localStorage is blocked, still continue to the success screen
       }

@@ -31,7 +31,7 @@ cp .env.example .env
 4. Создать таблицы и наполнить товары:
 
 ```bash
-npx prisma migrate dev --name init
+npm run prisma:deploy
 npx prisma db seed
 ```
 
@@ -46,6 +46,17 @@ npm run dev
 ```text
 http://localhost:3000
 ```
+
+Для существующей production-базы, ранее созданной через `db push`, сначала сделайте backup,
+добавьте новое поле и один раз отметьте начальную миграцию как baseline:
+
+```bash
+psql "$DATABASE_URL" -c 'ALTER TABLE "orders" ADD COLUMN IF NOT EXISTS "idempotencyKey" TEXT'
+psql "$DATABASE_URL" -c 'CREATE UNIQUE INDEX IF NOT EXISTS "orders_idempotencyKey_key" ON "orders"("idempotencyKey")'
+npx prisma migrate resolve --applied 20260805000000_initial
+```
+
+После baseline все дальнейшие изменения применяются только через `npm run prisma:deploy`.
 
 ## Вход сотрудников
 
@@ -71,9 +82,6 @@ SUPABASE_URL="https://your-project.supabase.co"
 NEXT_PUBLIC_SUPABASE_URL="https://your-project.supabase.co"
 SUPABASE_SERVICE_ROLE_KEY="your-service-role-key"
 SUPABASE_STORAGE_BUCKET="product-images"
-YOOKASSA_SHOP_ID=""
-YOOKASSA_SECRET_KEY=""
-YOOKASSA_WEBHOOK_SECRET=""
 RESEND_API_KEY=""
 EMAIL_FROM="KROOKIES <no-reply@your-domain.ru>"
 TELEGRAM_BOT_TOKEN=""
@@ -108,4 +116,3 @@ DADATA_API_KEY=""
 - `EMAIL_FROM`
 - `TELEGRAM_*`
 - `DADATA_API_KEY`
-

@@ -10,9 +10,9 @@ export const dynamic = "force-dynamic";
 export const metadata = { title: "Заказы — KROOKIES Admin" };
 
 type PageProps = {
-  searchParams?: {
+  searchParams?: Promise<{
     status?: string;
-  };
+  }>;
 };
 
 const ORDER_STATUSES: OrderStatus[] = [
@@ -36,9 +36,10 @@ const STATUS_LABELS: Record<OrderStatus, string> = {
 };
 
 export default async function AdminOrdersPage({ searchParams }: PageProps) {
+  const resolvedSearchParams = await searchParams;
   const user = await requireAdmin();
-  const status = ORDER_STATUSES.includes(searchParams?.status as OrderStatus)
-    ? (searchParams?.status as OrderStatus)
+  const status = ORDER_STATUSES.includes(resolvedSearchParams?.status as OrderStatus)
+    ? (resolvedSearchParams?.status as OrderStatus)
     : undefined;
   const orders = await getAdminOrders(status);
 

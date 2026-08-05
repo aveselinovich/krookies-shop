@@ -23,6 +23,14 @@ export function generateOtpCode() {
 export async function createOtpCode(phone: string) {
   const normalizedPhone = normalizePhone(phone);
   if (!validatePhone(normalizedPhone)) throw new Error("invalid_phone");
+  const now = new Date();
+  const minuteAgo = new Date(now.getTime() - 60_000);
+  const hourAgo = new Date(now.getTime() - 60 * 60_000);
+  const [recent, hourlyCount] = await Promise.all([
+    prisma.otpCode.findFirst({ where: { phone: normalizedPhone, createdAt: { gte: minuteAgo } } }),
+    prisma.otpCode.count({ where: { phone: normalizedPhone, createdAt: { gte: hourAgo } } }),
+  ]);
+  if (recent || hourlyCount >= 5) throw new Error("rate_limit_exceeded");
 
   if (!isMockOtpEnabled() && isSmsConfigured()) {
     const { uuid } = await sendVerificationCode({ phone: normalizedPhone });
@@ -77,12 +85,14 @@ export async function verifyOtpCode(phone: string, code: string) {
 
     if (!otpCode) throw new Error("invalid_or_expired_code");
 
+    if (otpCode.attempts >= 5) throw new Error("too_many_code_attempts");
     try {
       await checkVerificationCode({ uuid: otpCode.code, code: normalizedCode });
     } catch (error) {
       if (error instanceof Error && error.message.startsWith("direct_verifier_")) {
         throw new Error("invalid_or_expired_code");
       }
+      await prisma.otpCode.update({ where: { id: otpCode.id }, data: { attempts: { increment: 1 } } });
       throw error;
     }
 
@@ -97,7 +107,6 @@ export async function verifyOtpCode(phone: string, code: string) {
   const otpCode = await prisma.otpCode.findFirst({
     where: {
       phone: normalizedPhone,
-      code: normalizedCode,
       purpose: OtpPurpose.login,
       consumedAt: null,
       expiresAt: { gt: new Date() },
@@ -105,7 +114,11 @@ export async function verifyOtpCode(phone: string, code: string) {
     orderBy: { createdAt: "desc" },
   });
 
-  if (!otpCode) throw new Error("invalid_or_expired_code");
+  if (!otpCode || otpCode.attempts >= 5) throw new Error("invalid_or_expired_code");
+  if (otpCode.code !== normalizedCode) {
+    await prisma.otpCode.update({ where: { id: otpCode.id }, data: { attempts: { increment: 1 } } });
+    throw new Error("invalid_or_expired_code");
+  }
 
   await prisma.otpCode.update({
     where: { id: otpCode.id },

@@ -1,13 +1,13 @@
-import { DeliveryStatus, OrderStatus, PaymentStatus } from "@prisma/client";
+import { DeliveryStatus, OrderStatus, PaymentStatus, Prisma } from "@prisma/client";
 import { parseDeliveryAddress } from "@/lib/address";
 import { findBestDadataAddressSuggestion } from "@/lib/dadata-address";
 import { prisma } from "@/lib/prisma";
 import { isDeliveryDateTooEarly } from "@/lib/delivery-date";
 import { normalizePhone, validatePhone } from "@/lib/phone";
-import { createYookassaPayment, YookassaWebhookBody, yookassaAmountToKopecks } from "@/lib/yookassa";
 import { notifyTelegramSubscribersAboutOrder } from "@/lib/telegram";
 
 type CreateOrderInput = {
+  idempotencyKey: string;
   customer: { name: string; phone: string; email?: string };
   delivery: {
     city: string;
@@ -31,14 +31,34 @@ export function canCustomerCancelOrder(status: OrderStatus, paymentStatus: Payme
   return CUSTOMER_CANCELLABLE_ORDER_STATUSES.includes(status) && paymentStatus === "pending";
 }
 
-export async function createOrder(input: CreateOrderInput) {
+const MAX_ITEM_QUANTITY = 30;
+const MAX_TOTAL_QUANTITY = 50;
+const MAX_DISTINCT_ITEMS = 10;
+const MAX_ORDER_TOTAL = 100_000_00;
+
+function optionalText(value: string | undefined, maxLength: number, error: string) {
+  const normalized = value?.trim() || null;
+  if (normalized && normalized.length > maxLength) throw new Error(error);
+  return normalized;
+}
+
+export async function createOrder(input: CreateOrderInput, sessionUserId: string | null = null) {
   if (!input.items?.length) throw new Error("cart_is_empty");
+  if (input.items.length > MAX_DISTINCT_ITEMS) throw new Error("too_many_distinct_items");
+  const idempotencyKey = String(input.idempotencyKey || "").trim();
+  if (!/^[0-9a-f-]{36}$/i.test(idempotencyKey)) throw new Error("invalid_idempotency_key");
+
+  const existingOrder = await prisma.order.findUnique({ where: { idempotencyKey } });
+  if (existingOrder) {
+    return { orderId: existingOrder.id, orderNumber: existingOrder.orderNumber, status: existingOrder.status, total: existingOrder.total };
+  }
 
   const customerName = input.customer.name.trim();
   const customerPhone = normalizePhone(input.customer.phone);
   const customerEmail = input.customer.email?.trim().toLowerCase() || null;
 
   if (!customerName) throw new Error("customer_name_required");
+  if (customerName.length > 100) throw new Error("customer_name_too_long");
   if (!validatePhone(customerPhone)) throw new Error("invalid_phone");
   if (customerEmail && !/^\S+@\S+\.\S+$/.test(customerEmail)) throw new Error("invalid_email");
   const dadataSuggestion = input.delivery.addressLine ? await findBestDadataAddressSuggestion(input.delivery.addressLine) : null;
@@ -56,7 +76,8 @@ export async function createOrder(input: CreateOrderInput) {
     slug: item.slug?.trim() || null,
     quantity: Number(item.quantity),
   }));
-  if (normalizedItems.some((item) => !item.quantity || item.quantity <= 0)) throw new Error("invalid_quantity");
+  if (normalizedItems.some((item) => !Number.isInteger(item.quantity) || item.quantity <= 0 || item.quantity > MAX_ITEM_QUANTITY)) throw new Error("invalid_quantity");
+  if (normalizedItems.reduce((sum, item) => sum + item.quantity, 0) > MAX_TOTAL_QUANTITY) throw new Error("order_quantity_limit");
 
   const productIds = normalizedItems.map((item) => item.productId).filter(Boolean);
   const productSlugs = normalizedItems
@@ -87,16 +108,23 @@ export async function createOrder(input: CreateOrderInput) {
   const subtotal = orderItems.reduce((sum, item) => sum + item.total, 0);
   const discount = 0;
   const total = subtotal - discount;
+  if (total > MAX_ORDER_TOTAL) throw new Error("order_total_limit");
 
-  const user = await prisma.user.upsert({
-    where: { phone: customerPhone },
-    update: { name: customerName, email: customerEmail },
-    create: { name: customerName, phone: customerPhone, email: customerEmail },
-  });
+  let userId: string | null = null;
+  if (sessionUserId) {
+    const sessionUser = await prisma.user.findUnique({ where: { id: sessionUserId } });
+    if (!sessionUser || sessionUser.role !== "customer") throw new Error("invalid_session_user");
+    const phoneOwner = await prisma.user.findUnique({ where: { phone: customerPhone } });
+    if (phoneOwner && phoneOwner.id !== sessionUser.id) throw new Error("phone_used_by_another_account");
+    userId = sessionUser.id;
+  }
 
-  const order = await prisma.order.create({
+  let order;
+  try {
+    order = await prisma.order.create({
     data: {
-      userId: user.id,
+      idempotencyKey,
+      userId,
       customerName,
       customerPhone,
       customerEmail,
@@ -111,18 +139,25 @@ export async function createOrder(input: CreateOrderInput) {
       deliveryCity,
       deliveryStreet,
       deliveryHouse,
-      deliveryApartment: input.delivery.apartment?.trim() || null,
-      deliveryEntrance: input.delivery.entrance?.trim() || null,
-      deliveryFloor: input.delivery.floor?.trim() || null,
+      deliveryApartment: optionalText(input.delivery.apartment, 30, "delivery_apartment_too_long"),
+      deliveryEntrance: optionalText(input.delivery.entrance, 30, "delivery_entrance_too_long"),
+      deliveryFloor: optionalText(input.delivery.floor, 30, "delivery_floor_too_long"),
       deliveryIntercom: null,
       deliveryDesiredDate: input.delivery.desiredDate ? new Date(input.delivery.desiredDate) : null,
       deliveryDesiredSlot: input.delivery.desiredSlot || null,
-      deliveryComment: input.delivery.comment?.trim() || null,
-      customerComment: input.comment?.trim() || null,
+      deliveryComment: optionalText(input.delivery.comment, 500, "delivery_comment_too_long"),
+      customerComment: optionalText(input.comment, 500, "customer_comment_too_long"),
       items: { create: orderItems },
     },
     include: { items: true },
-  });
+    });
+  } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+      const duplicate = await prisma.order.findUnique({ where: { idempotencyKey } });
+      if (duplicate) return { orderId: duplicate.id, orderNumber: duplicate.orderNumber, status: duplicate.status, total: duplicate.total };
+    }
+    throw error;
+  }
 
   try {
     await notifyTelegramSubscribersAboutOrder({
@@ -214,46 +249,15 @@ export async function setPaymentLinkSent(orderId: string, sent: boolean) {
   });
 }
 
-export async function createOrderPaymentLink(orderId: string) {
-  const order = await prisma.order.findUnique({ where: { id: orderId }, include: { payment: true } });
-  if (!order) throw new Error("order_not_found");
-  if (order.status !== "pending_confirmation") throw new Error("order_must_be_pending_confirmation");
-  if (order.paymentStatus !== "pending") throw new Error("payment_status_must_be_pending");
-  if (order.total <= 0) throw new Error("invalid_order_total");
-  if (order.payment?.paymentUrl) return { paymentUrl: order.payment.paymentUrl, orderStatus: order.status, alreadyExists: true };
-
-  const yookassaPayment = await createYookassaPayment({
-    orderId: order.id,
-    orderNumber: order.orderNumber,
-    amount: order.total,
-    description: `Заказ KROOKIES #${order.orderNumber}`,
-  });
-
-  const updatedOrder = await prisma.order.update({
-    where: { id: order.id },
-    data: {
-      status: "pending_payment",
-      payment: {
-        create: {
-          provider: "yookassa",
-          providerPaymentId: yookassaPayment.providerPaymentId,
-          status: "pending",
-          amount: order.total,
-          currency: "RUB",
-          paymentUrl: yookassaPayment.paymentUrl,
-          rawResponse: yookassaPayment.rawResponse,
-        },
-      },
-    },
-    include: { payment: true },
-  });
-
-  return { paymentUrl: updatedOrder.payment?.paymentUrl, orderStatus: updatedOrder.status, alreadyExists: false };
-}
-
 export async function saveManualOrderPaymentLink(orderId: string, paymentUrl: string) {
   const normalizedPaymentUrl = paymentUrl.trim();
   if (!normalizedPaymentUrl) throw new Error("payment_link_required");
+  try {
+    const parsed = new URL(normalizedPaymentUrl);
+    if (parsed.protocol !== "https:" && parsed.protocol !== "http:") throw new Error();
+  } catch {
+    throw new Error("invalid_payment_link");
+  }
 
   const order = await prisma.order.findUnique({
     where: { id: orderId },
@@ -301,37 +305,26 @@ export async function saveManualOrderPaymentLink(orderId: string, paymentUrl: st
   };
 }
 
-export async function handleYookassaWebhook(body: YookassaWebhookBody) {
-  const event = body.event;
-  const providerPaymentId = body.object.id;
-  if (!providerPaymentId) throw new Error("provider_payment_id_missing");
+export async function updateOrderPaymentStatus(orderId: string, paymentStatus: PaymentStatus) {
+  const order = await prisma.order.findUnique({ where: { id: orderId }, include: { payment: true } });
+  if (!order) throw new Error("order_not_found");
 
-  const payment = await prisma.payment.findUnique({ where: { providerPaymentId }, include: { order: true } });
-  if (!payment) throw new Error("payment_not_found");
+  const nextOrderStatus: OrderStatus | undefined =
+    paymentStatus === "paid" && ["pending_confirmation", "pending_payment"].includes(order.status)
+      ? "accepted"
+      : undefined;
 
-  const order = payment.order;
-  if (body.object.amount?.value) {
-    const webhookAmount = yookassaAmountToKopecks(body.object.amount.value);
-    if (webhookAmount !== payment.amount) throw new Error("payment_amount_mismatch");
-  }
-
-  if (event === "payment.succeeded") {
-    if (payment.status === "paid" && order.paymentStatus === "paid") return { ok: true, alreadyProcessed: true };
-    await prisma.$transaction([
-      prisma.payment.update({ where: { id: payment.id }, data: { status: "paid", paidAt: new Date(), rawWebhook: body } }),
-      prisma.order.update({ where: { id: order.id }, data: { paymentStatus: "paid", status: "accepted" } }),
-    ]);
-    return { ok: true, alreadyProcessed: false };
-  }
-
-  if (event === "payment.canceled") {
-    if (payment.status === "paid") return { ok: true, alreadyProcessed: true };
-    await prisma.$transaction([
-      prisma.payment.update({ where: { id: payment.id }, data: { status: "failed", rawWebhook: body } }),
-      prisma.order.update({ where: { id: order.id }, data: { paymentStatus: "failed" } }),
-    ]);
-    return { ok: true, alreadyProcessed: false };
-  }
-
-  return { ok: true, ignored: true };
+  return prisma.$transaction(async (tx) => {
+    if (order.payment) {
+      await tx.payment.update({
+        where: { id: order.payment.id },
+        data: { status: paymentStatus, paidAt: paymentStatus === "paid" ? new Date() : null },
+      });
+    }
+    return tx.order.update({
+      where: { id: orderId },
+      data: { paymentStatus, ...(nextOrderStatus ? { status: nextOrderStatus } : {}) },
+      include: { payment: true },
+    });
+  });
 }

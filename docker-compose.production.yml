@@ -44,7 +44,7 @@ services:
       postgres:
         condition: service_healthy
     entrypoint: ["sh", "-lc"]
-    command: ["npx prisma db push && npm run prisma:seed"]
+    command: ["npm run prisma:deploy && npm run prisma:seed"]
 
 volumes:
   postgres_data:

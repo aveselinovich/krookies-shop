@@ -1,12 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { loginUser } from "@/lib/auth";
 import { authenticateAdminByEmail } from "@/lib/admin-passwords";
+import { assertRateLimit, getClientIp } from "@/lib/rate-limit";
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const email = String(body.email || "");
     const password = String(body.password || "");
+    assertRateLimit(`staff-login:${getClientIp(request)}:${email.trim().toLowerCase()}`, 5, 30 * 60_000);
 
     const user = await authenticateAdminByEmail(email, password);
     await loginUser(user.id, user.role);
@@ -26,7 +28,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "staff_login_failed" },
-      { status: 400 }
+      { status: error instanceof Error && error.message === "rate_limit_exceeded" ? 429 : 400 }
     );
   }
 }

@@ -5,13 +5,14 @@ import { requireApiAdmin } from "@/lib/permissions";
 
 export async function DELETE(
   _request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const auth = await requireApiAdmin();
     if (auth.response) return auth.response;
 
-    const user = await deleteAdminUser(params.id);
+    const user = await deleteAdminUser(id);
 
     return NextResponse.json({ user });
   } catch (error) {

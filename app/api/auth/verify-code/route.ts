@@ -2,12 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { UserRole } from "@prisma/client";
 import { verifyOtpCode } from "@/lib/otp";
 import { findOrCreateUserByPhone, loginUser } from "@/lib/auth";
+import { assertRateLimit, getClientIp } from "@/lib/rate-limit";
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const phone = String(body.phone || "");
     const code = String(body.code || "").replace(/\D/g, "");
+    assertRateLimit(`verify-code:${getClientIp(request)}:${phone}`, 10, 15 * 60_000);
 
     const loginByPhone = async (targetPhone: string) => {
       const result = await findOrCreateUserByPhone(targetPhone);
@@ -39,7 +41,7 @@ export async function POST(request: NextRequest) {
         error: error instanceof Error ? error.message : "otp_verify_failed",
       },
       {
-        status: 400,
+        status: error instanceof Error && error.message === "rate_limit_exceeded" ? 429 : 400,
       }
     );
   }

@@ -39,9 +39,6 @@
 
 Если используете соответствующие функции:
 
-- `YOOKASSA_SHOP_ID`
-- `YOOKASSA_SECRET_KEY`
-- `YOOKASSA_WEBHOOK_SECRET`
 - `RESEND_API_KEY`
 - `EMAIL_FROM`
 - `DADATA_API_KEY`
@@ -259,7 +256,6 @@ systemctl status certbot.timer
 - регистрацию и вход
 - восстановление пароля
 - создание заказа
-- webhook URL для ЮKassa
 - webhook URL для Telegram
 
 ## 14. Обновление проекта после изменений

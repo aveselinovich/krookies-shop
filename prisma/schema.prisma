@@ -93,6 +93,7 @@ model Product {
 model Order {
   id                    String         @id @default(cuid())
   orderNumber           Int            @unique @default(autoincrement())
+  idempotencyKey        String?        @unique
   userId                String?
   user                  User?          @relation(fields: [userId], references: [id], onDelete: SetNull)
   customerName          String
@@ -167,19 +168,15 @@ model Payment {
   id                String        @id @default(cuid())
   orderId           String        @unique
   order             Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  provider          String        @default("yookassa")
-  providerPaymentId String?       @unique
+  provider          String        @default("manual_link")
   status            PaymentStatus @default(pending)
   amount            Int
   currency          String        @default("RUB")
   paymentUrl        String?
   paidAt            DateTime?
-  rawResponse       Json?
-  rawWebhook        Json?
   createdAt         DateTime      @default(now())
   updatedAt         DateTime      @updatedAt
 
-  @@index([providerPaymentId])
   @@index([status])
   @@map("payments")
 }

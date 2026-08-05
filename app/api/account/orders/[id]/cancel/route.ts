@@ -4,16 +4,17 @@ import { cancelCustomerOrder } from "@/lib/orders";
 
 export async function PATCH(
   _request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const user = await getCurrentUser();
 
     if (!user) {
       return NextResponse.json({ error: "unauthorized" }, { status: 401 });
     }
 
-    const order = await cancelCustomerOrder(user.id, params.id);
+    const order = await cancelCustomerOrder(user.id, id);
     return NextResponse.json({ order });
   } catch (error) {
     console.error("PATCH /api/account/orders/[id]/cancel error:", error);

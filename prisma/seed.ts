@@ -3,9 +3,9 @@ import { PrismaClient, ProductBadge, UserRole } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
-const adminPhone = process.env.ADMIN_PHONE || "+79959178862";
-const adminEmail = process.env.ADMIN_EMAIL || "mackacrvena@gmail.com";
-const adminPassword = process.env.ADMIN_PASSWORD || "krookiesadmin";
+const adminPhone = process.env.ADMIN_PHONE;
+const adminEmail = process.env.ADMIN_EMAIL;
+const adminPassword = process.env.ADMIN_PASSWORD;
 
 function hashPassword(password: string) {
   const salt = crypto.randomBytes(16).toString("hex");
@@ -82,15 +82,19 @@ const products = [
 ];
 
 async function main() {
+  if (!adminPhone || !adminEmail || !adminPassword) {
+    throw new Error("ADMIN_PHONE, ADMIN_EMAIL and ADMIN_PASSWORD are required for the initial seed");
+  }
+
+  const existingAdmin = await prisma.user.findUnique({ where: { phone: adminPhone } });
   await prisma.user.upsert({
     where: { phone: adminPhone },
     update: {
       role: UserRole.admin,
       email: adminEmail,
       name: "KROOKIES Admin",
-      passwordHash: {
-        set: hashPassword(adminPassword),
-      },
+      // A repeat seed must never rotate an administrator's credentials.
+      passwordHash: existingAdmin?.passwordHash || hashPassword(adminPassword),
     },
     create: {
       phone: adminPhone,

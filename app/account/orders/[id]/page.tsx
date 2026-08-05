@@ -5,19 +5,21 @@ import { getNamedAccountUser } from "@/lib/account-user";
 
 export const dynamic = "force-dynamic";
 
-type Props = { params: { id: string } };
+type Props = { params: Promise<{ id: string }> };
 
 export async function generateMetadata({ params }: Props) {
+  const { id } = await params;
   const user = await getNamedAccountUser();
-  const order = await getAccountOrderById(user.id, params.id);
+  const order = await getAccountOrderById(user.id, id);
 
   if (!order) return { title: "Заказ не найден — KROOKIES" };
   return { title: `Заказ #${order.orderNumber} — KROOKIES` };
 }
 
 export default async function AccountOrderPage({ params }: Props) {
+  const { id } = await params;
   const user = await getNamedAccountUser();
-  const order = await getAccountOrderById(user.id, params.id);
+  const order = await getAccountOrderById(user.id, id);
 
   if (!order) notFound();
 

@@ -5,19 +5,21 @@ import { AdminCustomerForm } from "@/components/admin/AdminCustomerForm";
 import { getAdminCustomerById } from "@/lib/admin-customers";
 import { requireAdmin } from "@/lib/permissions";
 
-type Props = { params: { id: string } };
+type Props = { params: Promise<{ id: string }> };
 
 export const dynamic = "force-dynamic";
 
 export async function generateMetadata({ params }: Props) {
-  const user = await getAdminCustomerById(params.id);
+  const { id } = await params;
+  const user = await getAdminCustomerById(id);
   if (!user) return { title: "Пользователь не найден — KROOKIES Admin" };
   return { title: `${user.name || user.phone} — KROOKIES Admin` };
 }
 
 export default async function AdminUserPage({ params }: Props) {
+  const { id } = await params;
   const admin = await requireAdmin();
-  const user = await getAdminCustomerById(params.id);
+  const user = await getAdminCustomerById(id);
 
   if (!user) notFound();
 

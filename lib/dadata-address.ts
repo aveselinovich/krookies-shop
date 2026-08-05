@@ -2,6 +2,7 @@ import { AddressSuggestion } from "@/types/dadata";
 
 const DADATA_ADDRESS_URL = "https://suggestions.dadata.ru/suggestions/api/4_1/rs/suggest/address";
 const DELIVERY_AREA_LOCATIONS = [{ region: "Москва" }, { region: "Московская" }] as const;
+const suggestionCache = new Map<string, { expiresAt: number; value: { enabled: boolean; suggestions: AddressSuggestion[] } }>();
 
 type DadataAddressSuggestion = {
   value: string;
@@ -174,25 +175,33 @@ async function requestDadataAddressSuggestions(
 }
 
 export async function fetchDadataAddressSuggestions(query: string, count = 6) {
+  const cacheKey = `${query.trim().toLowerCase()}:${count}`;
+  const cached = suggestionCache.get(cacheKey);
+  if (cached && cached.expiresAt > Date.now()) return cached.value;
+
   const preferred = await requestDadataAddressSuggestions(query, count, {
     locations: DELIVERY_AREA_LOCATIONS,
   });
 
   if (preferred.suggestions.length >= count) {
-    return {
+    const result = {
       enabled: true,
       suggestions: preferred.suggestions.slice(0, count),
     };
+    suggestionCache.set(cacheKey, { expiresAt: Date.now() + 5 * 60_000, value: result });
+    return result;
   }
 
   const general = await requestDadataAddressSuggestions(query, Math.max(count, 10), {
     locationsBoost: DELIVERY_AREA_LOCATIONS,
   });
 
-  return {
+  const result = {
     enabled: true,
     suggestions: uniqueByUnrestrictedValue([...preferred.suggestions, ...general.suggestions]).slice(0, count),
   };
+  suggestionCache.set(cacheKey, { expiresAt: Date.now() + 5 * 60_000, value: result });
+  return result;
 }
 
 export async function findBestDadataAddressSuggestion(query: string) {

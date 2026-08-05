@@ -2,12 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { UserRole } from "@prisma/client";
 import { loginUser } from "@/lib/auth";
 import { authenticateCustomerByEmail } from "@/lib/customer-auth";
+import { assertRateLimit, getClientIp } from "@/lib/rate-limit";
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const email = String(body.email || "");
     const password = String(body.password || "");
+    assertRateLimit(`login:${getClientIp(request)}:${email.trim().toLowerCase()}`, 5, 15 * 60_000);
 
     const user = await authenticateCustomerByEmail(email, password);
     const sessionRole = UserRole.customer;
@@ -28,7 +30,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "login_failed" },
-      { status: 400 }
+      { status: error instanceof Error && error.message === "rate_limit_exceeded" ? 429 : 400 }
     );
   }
 }

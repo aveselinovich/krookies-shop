@@ -2,13 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireApiAdmin } from "@/lib/permissions";
 import { updateAdminCustomerProfile } from "@/lib/admin-customers";
 
-export async function PATCH(request: NextRequest, { params }: { params: { id: string } }) {
+export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const { id } = await params;
     const auth = await requireApiAdmin();
     if (auth.response) return auth.response;
 
     const body = await request.json();
-    const user = await updateAdminCustomerProfile(params.id, body);
+    const user = await updateAdminCustomerProfile(id, body);
 
     return NextResponse.json({ user });
   } catch (error) {

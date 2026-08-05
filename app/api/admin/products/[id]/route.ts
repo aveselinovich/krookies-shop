@@ -3,14 +3,15 @@ import { requireApiAdmin } from "@/lib/permissions";
 import { deleteAdminProduct, updateAdminProduct } from "@/lib/admin-products";
 import { revalidatePath } from "next/cache";
 
-export async function PATCH(request: NextRequest, { params }: { params: { id: string } }) {
+export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const { id } = await params;
     const auth = await requireApiAdmin();
     if (auth.response) return auth.response;
 
     const body = await request.json();
 
-    const product = await updateAdminProduct(params.id, {
+    const product = await updateAdminProduct(id, {
       title: body.title,
       shortDescription: body.shortDescription,
       composition: body.composition,
@@ -38,12 +39,13 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
   }
 }
 
-export async function DELETE(_request: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(_request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const { id } = await params;
     const auth = await requireApiAdmin();
     if (auth.response) return auth.response;
 
-    const product = await deleteAdminProduct(params.id);
+    const product = await deleteAdminProduct(id);
 
     revalidatePath("/");
     revalidatePath("/catalog");
