@@ -5,3 +5,4 @@ node_modules
 !.env.production.example
 tsconfig.tsbuildinfo
 *.log
+.DS_Store

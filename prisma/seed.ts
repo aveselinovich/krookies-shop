@@ -82,28 +82,33 @@ const products = [
 ];
 
 async function main() {
-  if (!adminPhone || !adminEmail || !adminPassword) {
-    throw new Error("ADMIN_PHONE, ADMIN_EMAIL and ADMIN_PASSWORD are required for the initial seed");
+  const hasPartialAdminConfig = Boolean(adminPhone || adminEmail || adminPassword) &&
+    !(adminPhone && adminEmail && adminPassword);
+
+  if (hasPartialAdminConfig) {
+    throw new Error("Set ADMIN_PHONE, ADMIN_EMAIL and ADMIN_PASSWORD together, or leave all three empty");
   }
 
-  const existingAdmin = await prisma.user.findUnique({ where: { phone: adminPhone } });
-  await prisma.user.upsert({
-    where: { phone: adminPhone },
-    update: {
-      role: UserRole.admin,
-      email: adminEmail,
-      name: "KROOKIES Admin",
-      // A repeat seed must never rotate an administrator's credentials.
-      passwordHash: existingAdmin?.passwordHash || hashPassword(adminPassword),
-    },
-    create: {
-      phone: adminPhone,
-      email: adminEmail,
-      name: "KROOKIES Admin",
-      role: UserRole.admin,
-      passwordHash: hashPassword(adminPassword),
-    },
-  });
+  if (adminPhone && adminEmail && adminPassword) {
+    const existingAdmin = await prisma.user.findUnique({ where: { phone: adminPhone } });
+    await prisma.user.upsert({
+      where: { phone: adminPhone },
+      update: {
+        role: UserRole.admin,
+        email: adminEmail,
+        name: "KROOKIES Admin",
+        // A repeat seed must never rotate an administrator's credentials.
+        passwordHash: existingAdmin?.passwordHash || hashPassword(adminPassword),
+      },
+      create: {
+        phone: adminPhone,
+        email: adminEmail,
+        name: "KROOKIES Admin",
+        role: UserRole.admin,
+        passwordHash: hashPassword(adminPassword),
+      },
+    });
+  }
 
   for (const product of products) {
     await prisma.product.upsert({

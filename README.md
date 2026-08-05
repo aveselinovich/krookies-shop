@@ -71,8 +71,8 @@ npx prisma migrate resolve --applied 20260805000000_initial
 ## Переменные окружения
 
 ```env
-DATABASE_URL="postgresql://postgres.project-ref:password@aws-REGION.pooler.supabase.com:6543/postgres?pgbouncer=true&connection_limit=1"
-DIRECT_URL="postgresql://postgres:password@db.project-ref.supabase.co:5432/postgres"
+DATABASE_URL="postgresql://user:password@pooled-host/database?sslmode=require"
+DATABASE_URL_UNPOOLED="postgresql://user:password@direct-host/database?sslmode=require"
 NEXT_PUBLIC_SITE_URL="http://localhost:3000"
 AUTH_SECRET="replace-with-a-long-random-secret"
 ADMIN_PHONE="+79959178862"
