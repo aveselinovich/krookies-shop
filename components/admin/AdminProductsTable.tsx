@@ -64,10 +64,27 @@ export function AdminProductsTable({ products }: { products: Product[] }) {
   const touchDraggedIdRef = useRef<string | null>(null);
   const touchStartOrderRef = useRef<string[]>([]);
   const dragLayoutRef = useRef<DragPreview["layout"] | null>(null);
+  const activePointerIdRef = useRef<number | null>(null);
+  const globalDragListenersRef = useRef<{
+    move: (event: PointerEvent) => void;
+    up: (event: PointerEvent) => void;
+    cancel: (event: PointerEvent) => void;
+  } | null>(null);
 
   useEffect(() => {
     itemsRef.current = items;
   }, [items]);
+
+  useEffect(() => {
+    return () => {
+      const listeners = globalDragListenersRef.current;
+      if (!listeners) return;
+
+      window.removeEventListener("pointermove", listeners.move);
+      window.removeEventListener("pointerup", listeners.up);
+      window.removeEventListener("pointercancel", listeners.cancel);
+    };
+  }, []);
 
   useEffect(() => {
     if (!draggedId) {
@@ -187,12 +204,43 @@ export function AdminProductsTable({ products }: { products: Product[] }) {
   }
 
   function resetDragState() {
+    const listeners = globalDragListenersRef.current;
+    if (listeners) {
+      window.removeEventListener("pointermove", listeners.move);
+      window.removeEventListener("pointerup", listeners.up);
+      window.removeEventListener("pointercancel", listeners.cancel);
+      globalDragListenersRef.current = null;
+    }
+
     touchDraggedIdRef.current = null;
     touchStartOrderRef.current = [];
     dragLayoutRef.current = null;
+    activePointerIdRef.current = null;
     dragPointerYRef.current = null;
     setDragPreview(null);
     setDraggedId(null);
+  }
+
+  function attachGlobalDragListeners(pointerId: number) {
+    const move = (event: PointerEvent) => {
+      if (event.pointerId !== activePointerIdRef.current) return;
+      event.preventDefault();
+      updatePointerDrag(event.clientX, event.clientY);
+    };
+    const up = (event: PointerEvent) => {
+      if (event.pointerId !== activePointerIdRef.current) return;
+      finishPointerDrag();
+    };
+    const cancel = (event: PointerEvent) => {
+      if (event.pointerId !== activePointerIdRef.current) return;
+      cancelPointerDrag();
+    };
+
+    activePointerIdRef.current = pointerId;
+    globalDragListenersRef.current = { move, up, cancel };
+    window.addEventListener("pointermove", move, { passive: false });
+    window.addEventListener("pointerup", up);
+    window.addEventListener("pointercancel", cancel);
   }
 
   function handlePointerDown(
@@ -214,6 +262,7 @@ export function AdminProductsTable({ products }: { products: Product[] }) {
     touchDraggedIdRef.current = productId;
     touchStartOrderRef.current = itemsRef.current.map((item) => item.id);
     dragLayoutRef.current = layout;
+    attachGlobalDragListeners(event.pointerId);
     setDragPreview({
       productId,
       pointerX: event.clientX,
@@ -225,21 +274,20 @@ export function AdminProductsTable({ products }: { products: Product[] }) {
     setMessage(null);
   }
 
-  function handlePointerMove(event: ReactPointerEvent<HTMLButtonElement>) {
+  function updatePointerDrag(clientX: number, clientY: number) {
     const sourceId = touchDraggedIdRef.current;
     const layout = dragLayoutRef.current;
     if (!sourceId || !layout) return;
 
-    event.preventDefault();
-    dragPointerYRef.current = event.clientY;
+    dragPointerYRef.current = clientY;
     setDragPreview((current) => current ? {
       ...current,
-      pointerX: event.clientX,
-      pointerY: event.clientY,
+      pointerX: clientX,
+      pointerY: clientY,
     } : current);
 
     const targetElement = document
-      .elementFromPoint(event.clientX, event.clientY)
+      .elementFromPoint(clientX, clientY)
       ?.closest<HTMLElement>("[data-product-id]");
     const targetId = targetElement?.dataset.productId;
 
@@ -255,8 +303,8 @@ export function AdminProductsTable({ products }: { products: Product[] }) {
     const targetMiddle = targetBounds.top + targetBounds.height / 2;
     const movingDown = sourceIndex < targetIndex;
     const crossedTargetMiddle = movingDown
-      ? event.clientY > targetMiddle
-      : event.clientY < targetMiddle;
+      ? clientY > targetMiddle
+      : clientY < targetMiddle;
 
     if (!crossedTargetMiddle) return;
 
@@ -354,10 +402,6 @@ export function AdminProductsTable({ products }: { products: Product[] }) {
               <button
                 type="button"
                 onPointerDown={(event) => handlePointerDown(product.id, "mobile", event)}
-                onPointerMove={handlePointerMove}
-                onPointerUp={finishPointerDrag}
-                onPointerCancel={cancelPointerDrag}
-                onLostPointerCapture={finishPointerDrag}
                 onKeyDown={(event) => handleOrderKeyDown(product.id, event)}
                 aria-label={`Изменить порядок товара ${product.title}`}
                 aria-pressed={draggedId === product.id}
@@ -440,10 +484,6 @@ export function AdminProductsTable({ products }: { products: Product[] }) {
                   <button
                     type="button"
                     onPointerDown={(event) => handlePointerDown(product.id, "desktop", event)}
-                    onPointerMove={handlePointerMove}
-                    onPointerUp={finishPointerDrag}
-                    onPointerCancel={cancelPointerDrag}
-                    onLostPointerCapture={finishPointerDrag}
                     onKeyDown={(event) => handleOrderKeyDown(product.id, event)}
                     aria-label={`Изменить порядок товара ${product.title}`}
                     aria-pressed={draggedId === product.id}
