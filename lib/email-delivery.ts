@@ -58,5 +58,7 @@ export async function sendEmail(input: {
     throw new Error("email_send_failed");
   }
 
+  console.info("email accepted by provider", { id: payload.id });
+
   return payload;
 }

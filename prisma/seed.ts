@@ -4,7 +4,12 @@ import { PrismaClient, ProductBadge, UserRole } from "@prisma/client";
 const prisma = new PrismaClient();
 
 const adminPhone = process.env.ADMIN_PHONE;
-const adminEmail = process.env.ADMIN_EMAIL;
+const configuredAdminEmail = process.env.ADMIN_EMAIL;
+const adminEmail = configuredAdminEmail
+  ?.trim()
+  .replace(/^(['"])(.*)\1$/, "$2")
+  .trim()
+  .toLowerCase();
 const adminPassword = process.env.ADMIN_PASSWORD;
 
 function hashPassword(password: string) {
