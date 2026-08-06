@@ -13,8 +13,10 @@ import { formatPrice } from "@/lib/money";
 import { formatProductWeight } from "@/lib/product-weight";
 import { DragHandleIcon } from "@/components/ui/Icons";
 
-const AUTO_SCROLL_EDGE_OFFSET = 64;
-const AUTO_SCROLL_MAX_STEP = 6;
+const AUTO_SCROLL_EDGE_OFFSET = 140;
+const AUTO_SCROLL_INITIAL_MAX_STEP = 5;
+const AUTO_SCROLL_MAX_STEP = 18;
+const AUTO_SCROLL_ACCELERATION_MS = 800;
 const REORDER_ANIMATION_DURATION = 180;
 
 type DragPreview = {
@@ -59,8 +61,11 @@ export function AdminProductsTable({ products }: { products: Product[] }) {
   const [message, setMessage] = useState<string | null>(null);
   const [isSavingOrder, setIsSavingOrder] = useState(false);
   const itemsRef = useRef(items);
+  const dragPointerXRef = useRef<number | null>(null);
   const dragPointerYRef = useRef<number | null>(null);
   const autoScrollFrameRef = useRef<number | null>(null);
+  const autoScrollDirectionRef = useRef<-1 | 0 | 1>(0);
+  const autoScrollStartedAtRef = useRef<number | null>(null);
   const touchDraggedIdRef = useRef<string | null>(null);
   const touchStartOrderRef = useRef<string[]>([]);
   const dragLayoutRef = useRef<DragPreview["layout"] | null>(null);
@@ -88,7 +93,10 @@ export function AdminProductsTable({ products }: { products: Product[] }) {
 
   useEffect(() => {
     if (!draggedId) {
+      dragPointerXRef.current = null;
       dragPointerYRef.current = null;
+      autoScrollDirectionRef.current = 0;
+      autoScrollStartedAtRef.current = null;
       if (autoScrollFrameRef.current !== null) {
         cancelAnimationFrame(autoScrollFrameRef.current);
         autoScrollFrameRef.current = null;
@@ -96,23 +104,40 @@ export function AdminProductsTable({ products }: { products: Product[] }) {
       return;
     }
 
-    function tickAutoScroll() {
+    function tickAutoScroll(timestamp: number) {
+      const pointerX = dragPointerXRef.current;
       const pointerY = dragPointerYRef.current;
 
-      if (pointerY !== null) {
+      if (pointerX !== null && pointerY !== null) {
         const viewportHeight = window.innerHeight;
+        let direction: -1 | 0 | 1 = 0;
+        let intensity = 0;
         let scrollStep = 0;
 
         if (pointerY < AUTO_SCROLL_EDGE_OFFSET) {
-          const intensity = (AUTO_SCROLL_EDGE_OFFSET - pointerY) / AUTO_SCROLL_EDGE_OFFSET;
-          scrollStep = -Math.max(2, Math.round(AUTO_SCROLL_MAX_STEP * intensity));
+          direction = -1;
+          intensity = (AUTO_SCROLL_EDGE_OFFSET - pointerY) / AUTO_SCROLL_EDGE_OFFSET;
         } else if (pointerY > viewportHeight - AUTO_SCROLL_EDGE_OFFSET) {
-          const intensity = (pointerY - (viewportHeight - AUTO_SCROLL_EDGE_OFFSET)) / AUTO_SCROLL_EDGE_OFFSET;
-          scrollStep = Math.max(2, Math.round(AUTO_SCROLL_MAX_STEP * intensity));
+          direction = 1;
+          intensity = (pointerY - (viewportHeight - AUTO_SCROLL_EDGE_OFFSET)) / AUTO_SCROLL_EDGE_OFFSET;
+        }
+
+        if (direction !== autoScrollDirectionRef.current) {
+          autoScrollDirectionRef.current = direction;
+          autoScrollStartedAtRef.current = direction === 0 ? null : timestamp;
+        }
+
+        if (direction !== 0) {
+          const startedAt = autoScrollStartedAtRef.current ?? timestamp;
+          const acceleration = Math.min(1, (timestamp - startedAt) / AUTO_SCROLL_ACCELERATION_MS);
+          const currentMaxStep = AUTO_SCROLL_INITIAL_MAX_STEP
+            + (AUTO_SCROLL_MAX_STEP - AUTO_SCROLL_INITIAL_MAX_STEP) * acceleration;
+          scrollStep = direction * Math.max(3, Math.round(currentMaxStep * intensity));
         }
 
         if (scrollStep !== 0) {
           window.scrollBy({ top: scrollStep, behavior: "auto" });
+          updatePointerDrag(pointerX, pointerY);
         }
       }
 
@@ -216,6 +241,7 @@ export function AdminProductsTable({ products }: { products: Product[] }) {
     touchStartOrderRef.current = [];
     dragLayoutRef.current = null;
     activePointerIdRef.current = null;
+    dragPointerXRef.current = null;
     dragPointerYRef.current = null;
     setDragPreview(null);
     setDraggedId(null);
@@ -258,6 +284,7 @@ export function AdminProductsTable({ products }: { products: Product[] }) {
 
     if (!cardBounds) return;
 
+    dragPointerXRef.current = event.clientX;
     dragPointerYRef.current = event.clientY;
     touchDraggedIdRef.current = productId;
     touchStartOrderRef.current = itemsRef.current.map((item) => item.id);
@@ -279,6 +306,7 @@ export function AdminProductsTable({ products }: { products: Product[] }) {
     const layout = dragLayoutRef.current;
     if (!sourceId || !layout) return;
 
+    dragPointerXRef.current = clientX;
     dragPointerYRef.current = clientY;
     setDragPreview((current) => current ? {
       ...current,
