@@ -13,10 +13,12 @@ import { formatPrice } from "@/lib/money";
 import { formatProductWeight } from "@/lib/product-weight";
 import { DragHandleIcon } from "@/components/ui/Icons";
 
-const AUTO_SCROLL_EDGE_OFFSET = 140;
-const AUTO_SCROLL_INITIAL_MAX_STEP = 5;
-const AUTO_SCROLL_MAX_STEP = 18;
-const AUTO_SCROLL_ACCELERATION_MS = 800;
+const AUTO_SCROLL_EDGE_MIN = 180;
+const AUTO_SCROLL_EDGE_MAX = 260;
+const AUTO_SCROLL_INITIAL_MAX_STEP = 12;
+const AUTO_SCROLL_MAX_STEP = 36;
+const AUTO_SCROLL_MIN_STEP = 8;
+const AUTO_SCROLL_ACCELERATION_MS = 450;
 const REORDER_ANIMATION_DURATION = 180;
 
 type DragPreview = {
@@ -109,17 +111,21 @@ export function AdminProductsTable({ products }: { products: Product[] }) {
       const pointerY = dragPointerYRef.current;
 
       if (pointerX !== null && pointerY !== null) {
-        const viewportHeight = window.innerHeight;
+        const viewportHeight = window.visualViewport?.height ?? window.innerHeight;
+        const edgeOffset = Math.min(
+          AUTO_SCROLL_EDGE_MAX,
+          Math.max(AUTO_SCROLL_EDGE_MIN, viewportHeight * 0.28),
+        );
         let direction: -1 | 0 | 1 = 0;
         let intensity = 0;
         let scrollStep = 0;
 
-        if (pointerY < AUTO_SCROLL_EDGE_OFFSET) {
+        if (pointerY < edgeOffset) {
           direction = -1;
-          intensity = (AUTO_SCROLL_EDGE_OFFSET - pointerY) / AUTO_SCROLL_EDGE_OFFSET;
-        } else if (pointerY > viewportHeight - AUTO_SCROLL_EDGE_OFFSET) {
+          intensity = Math.min(1, (edgeOffset - pointerY) / edgeOffset);
+        } else if (pointerY > viewportHeight - edgeOffset) {
           direction = 1;
-          intensity = (pointerY - (viewportHeight - AUTO_SCROLL_EDGE_OFFSET)) / AUTO_SCROLL_EDGE_OFFSET;
+          intensity = Math.min(1, (pointerY - (viewportHeight - edgeOffset)) / edgeOffset);
         }
 
         if (direction !== autoScrollDirectionRef.current) {
@@ -132,7 +138,11 @@ export function AdminProductsTable({ products }: { products: Product[] }) {
           const acceleration = Math.min(1, (timestamp - startedAt) / AUTO_SCROLL_ACCELERATION_MS);
           const currentMaxStep = AUTO_SCROLL_INITIAL_MAX_STEP
             + (AUTO_SCROLL_MAX_STEP - AUTO_SCROLL_INITIAL_MAX_STEP) * acceleration;
-          scrollStep = direction * Math.max(3, Math.round(currentMaxStep * intensity));
+          const easedIntensity = 0.35 + 0.65 * intensity * intensity;
+          scrollStep = direction * Math.max(
+            AUTO_SCROLL_MIN_STEP,
+            Math.round(currentMaxStep * easedIntensity),
+          );
         }
 
         if (scrollStep !== 0) {
