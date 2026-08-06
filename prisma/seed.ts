@@ -118,7 +118,9 @@ async function main() {
   for (const product of products) {
     await prisma.product.upsert({
       where: { id: product.id },
-      update: product,
+      // Products are managed from the admin panel after their first creation.
+      // Deploy-time seeding must not overwrite photos, prices, text or sort order.
+      update: {},
       create: product,
     });
   }

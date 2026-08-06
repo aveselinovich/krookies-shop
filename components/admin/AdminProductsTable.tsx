@@ -13,8 +13,8 @@ import { formatPrice } from "@/lib/money";
 import { formatProductWeight } from "@/lib/product-weight";
 import { DragHandleIcon } from "@/components/ui/Icons";
 
-const AUTO_SCROLL_EDGE_OFFSET = 120;
-const AUTO_SCROLL_MAX_STEP = 16;
+const AUTO_SCROLL_EDGE_OFFSET = 64;
+const AUTO_SCROLL_MAX_STEP = 6;
 const REORDER_ANIMATION_DURATION = 180;
 
 type DragPreview = {
