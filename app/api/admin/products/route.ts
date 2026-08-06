@@ -18,7 +18,7 @@ export async function POST(request: NextRequest) {
       weight: body.weight,
       badge: body.badge,
       price: Number(body.price),
-      imageUrl: body.imageUrl || "/images/products/basic-cookie.jpg",
+      imageUrl: body.imageUrl,
       isAvailable: Boolean(body.isAvailable),
       isPublished: Boolean(body.isPublished),
     });

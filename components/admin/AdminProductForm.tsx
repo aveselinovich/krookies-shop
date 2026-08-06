@@ -5,14 +5,6 @@ import { ChangeEvent, FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import { normalizeWeightValue } from "@/lib/product-weight";
 
-const PRODUCT_IMAGES = [
-  ["/images/products/basic-cookie.jpg", "Базовый минимум"],
-  ["/images/products/patrik-cookie.jpg", "Девочка с Патриков"],
-  ["/images/products/caramel-cookie.jpg", "Карамельное облачко"],
-  ["/images/products/tropic-cookie.jpg", "Тропический рай"],
-  ["/images/products/chocolate-cookie.jpg", "Шоколадный заяц"],
-] as const;
-
 function priceToRubles(price: number) {
   return String(price / 100);
 }
@@ -64,7 +56,7 @@ export function AdminProductForm({ mode, product }: AdminProductFormProps) {
   const [weight, setWeight] = useState(normalizeWeightValue(product?.weight || ""));
   const [badge, setBadge] = useState<ProductBadge | "none">(product?.badge || "none");
   const [price, setPrice] = useState(product ? priceToRubles(product.price) : "550");
-  const [imageUrl, setImageUrl] = useState(product?.imageUrl || "/images/products/basic-cookie.jpg");
+  const [imageUrl, setImageUrl] = useState(product?.imageUrl || "");
   const [isAvailable, setIsAvailable] = useState(product?.isAvailable ?? true);
   const [isPublished, setIsPublished] = useState(product?.isPublished ?? true);
   const [isSaving, setIsSaving] = useState(false);
@@ -110,6 +102,9 @@ export function AdminProductForm({ mode, product }: AdminProductFormProps) {
 
     try {
       const nextImageUrl = imageUrl.trim();
+      if (!nextImageUrl) {
+        throw new Error("product_image_required");
+      }
       const url = mode === "create" ? "/api/admin/products" : `/api/admin/products/${product.id}`;
       const method = mode === "create" ? "POST" : "PATCH";
 
@@ -212,16 +207,28 @@ export function AdminProductForm({ mode, product }: AdminProductFormProps) {
       </label>
 
       <div className="mt-5 grid gap-5 md:grid-cols-[220px_1fr] md:items-start">
-        <div className="overflow-hidden rounded-[24px] bg-[#FFF4F8]">
-          <img src={imageUrl} alt={title || "Товар"} className="h-56 w-full object-cover" />
+        <div className="flex h-56 overflow-hidden rounded-[24px] bg-[#FFF4F8] ring-1 ring-[#E6AECB]">
+          {imageUrl ? (
+            <img src={imageUrl} alt={title || "Товар"} className="h-full w-full object-cover" />
+          ) : (
+            <div className="flex h-full w-full items-center justify-center px-6 text-center text-sm font-semibold text-[#8A6A62]">
+              Фотография пока не загружена
+            </div>
+          )}
         </div>
 
-        <div className="block">
-          <label htmlFor="product-image-url" className="mb-2 block text-sm font-semibold text-[#54342C]">Ссылка на фото товара</label>
-          <input id="product-image-url" value={imageUrl} onChange={(event) => setImageUrl(event.target.value)} placeholder="https://... или /images/products/photo.jpg" className={input} />
+        <div>
+          <h2 className="text-lg font-black text-[#54342C]">Фотография товара</h2>
+          <p className="mt-2 text-sm leading-6 text-[#54342C]">
+            Загрузите JPG, PNG или WebP размером до 4 МБ. Фотография сохранится на сервере и появится в превью слева.
+          </p>
 
-          <label className={`mt-3 inline-flex cursor-pointer items-center justify-center rounded-full bg-[#FFF4F8] px-5 py-3 text-sm font-semibold text-[#54342C] ring-1 ring-[#E6AECB] ${isUploadingImage ? "pointer-events-none opacity-60" : ""}`}>
-            {isUploadingImage ? "Загружаем фотографию..." : "Загрузить фотографию"}
+          <label className={`mt-4 inline-flex min-h-12 cursor-pointer items-center justify-center rounded-full bg-[#54342C] px-6 py-3 text-center text-sm font-semibold text-white transition hover:bg-[#6B463C] ${isUploadingImage ? "pointer-events-none opacity-60" : ""}`}>
+            {isUploadingImage
+              ? "Загружаем фотографию..."
+              : imageUrl
+                ? "Заменить фотографию"
+                : "Загрузить фотографию"}
             <input
               type="file"
               accept="image/jpeg,image/png,image/webp"
@@ -230,14 +237,6 @@ export function AdminProductForm({ mode, product }: AdminProductFormProps) {
               className="sr-only"
             />
           </label>
-
-          <select value={imageUrl} onChange={(event) => setImageUrl(event.target.value)} className={`${input} mt-3`}>
-            {PRODUCT_IMAGES.map(([path, label]) => <option key={path} value={path}>{label}</option>)}
-            {!PRODUCT_IMAGES.some(([path]) => path === imageUrl) ? <option value={imageUrl}>Текущий путь</option> : null}
-          </select>
-          <p className="mt-3 text-sm leading-6 text-[#54342C]">
-            Можно вставить прямую ссылку или загрузить JPG, PNG либо WebP размером до 4 МБ. Загруженные фотографии сохраняются на сервере Vercel.
-          </p>
         </div>
       </div>
 
