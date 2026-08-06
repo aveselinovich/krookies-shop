@@ -8,7 +8,7 @@ function getAdminPhone() {
 }
 
 function getAdminEmail() {
-  const configuredEmail = process.env.ADMIN_EMAIL || "mackacrvena@gmail.com";
+  const configuredEmail = process.env.ADMIN_EMAIL || "veselinovich.a@gmail.com";
   const withoutWrappingQuotes = configuredEmail.trim().replace(/^(['"])(.*)\1$/, "$2");
 
   return withoutWrappingQuotes.trim().toLowerCase();
