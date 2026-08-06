@@ -61,7 +61,16 @@ export async function createOrder(input: CreateOrderInput, sessionUserId: string
   if (customerName.length > 100) throw new Error("customer_name_too_long");
   if (!validatePhone(customerPhone)) throw new Error("invalid_phone");
   if (customerEmail && !/^\S+@\S+\.\S+$/.test(customerEmail)) throw new Error("invalid_email");
-  const dadataSuggestion = input.delivery.addressLine ? await findBestDadataAddressSuggestion(input.delivery.addressLine) : null;
+  let dadataSuggestion = null;
+  if (input.delivery.addressLine) {
+    try {
+      dadataSuggestion = await findBestDadataAddressSuggestion(input.delivery.addressLine);
+    } catch (error) {
+      // Address suggestions improve normalized order data, but a temporary
+      // upstream outage must not prevent the customer from placing an order.
+      console.error("Order address normalization error:", error);
+    }
+  }
   if (dadataSuggestion && !dadataSuggestion.isDeliveryArea) throw new Error("delivery_out_of_area");
   const parsedAddress = input.delivery.addressLine ? parseDeliveryAddress(input.delivery.addressLine) : null;
   const deliveryCity = dadataSuggestion?.city || parsedAddress?.city || input.delivery.city.trim();

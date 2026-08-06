@@ -56,6 +56,8 @@ function getCheckoutErrorMessage(error: string) {
       return "Сейчас доставляем только по Москве и Московской области";
     case "invalid_delivery_address":
       return "Введите адрес с улицей и номером дома";
+    case "rate_limit_exceeded":
+      return "Слишком много попыток отправки. Подождите несколько минут и попробуйте снова";
     default:
       return "Не получилось отправить заказ. Попробуйте еще раз";
   }
