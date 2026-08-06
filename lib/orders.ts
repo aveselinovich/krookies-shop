@@ -114,8 +114,6 @@ export async function createOrder(input: CreateOrderInput, sessionUserId: string
   if (sessionUserId) {
     const sessionUser = await prisma.user.findUnique({ where: { id: sessionUserId } });
     if (!sessionUser || sessionUser.role !== "customer") throw new Error("invalid_session_user");
-    const phoneOwner = await prisma.user.findUnique({ where: { phone: customerPhone } });
-    if (phoneOwner && phoneOwner.id !== sessionUser.id) throw new Error("phone_used_by_another_account");
     userId = sessionUser.id;
   }
 
