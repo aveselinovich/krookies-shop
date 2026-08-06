@@ -2,21 +2,27 @@
 
 import Link from "next/link";
 import { Product } from "@prisma/client";
-import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type KeyboardEvent as ReactKeyboardEvent,
+  type PointerEvent as ReactPointerEvent,
+} from "react";
 import { formatPrice } from "@/lib/money";
 import { formatProductWeight } from "@/lib/product-weight";
 import { DragHandleIcon } from "@/components/ui/Icons";
 
-const AUTO_SCROLL_EDGE_OFFSET = 140;
-const AUTO_SCROLL_MAX_STEP = 10;
+const AUTO_SCROLL_EDGE_OFFSET = 120;
+const AUTO_SCROLL_MAX_STEP = 16;
+const REORDER_ANIMATION_DURATION = 180;
 
-type MobileDragPreview = {
+type DragPreview = {
   productId: string;
   pointerX: number;
   pointerY: number;
-  offsetX: number;
-  offsetY: number;
   width: number;
+  layout: "mobile" | "desktop";
 };
 
 function truncateWithDots(text: string, maxLength = 58) {
@@ -38,10 +44,18 @@ function reorderListByIds(currentItems: Product[], sourceId: string, targetId: s
   return nextItems;
 }
 
+function orderItemsByIds(currentItems: Product[], orderedIds: string[]) {
+  const itemsById = new Map(currentItems.map((item) => [item.id, item]));
+  return orderedIds.flatMap((itemId) => {
+    const item = itemsById.get(itemId);
+    return item ? [item] : [];
+  });
+}
+
 export function AdminProductsTable({ products }: { products: Product[] }) {
   const [items, setItems] = useState(products);
   const [draggedId, setDraggedId] = useState<string | null>(null);
-  const [mobileDragPreview, setMobileDragPreview] = useState<MobileDragPreview | null>(null);
+  const [dragPreview, setDragPreview] = useState<DragPreview | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [isSavingOrder, setIsSavingOrder] = useState(false);
   const itemsRef = useRef(items);
@@ -49,6 +63,7 @@ export function AdminProductsTable({ products }: { products: Product[] }) {
   const autoScrollFrameRef = useRef<number | null>(null);
   const touchDraggedIdRef = useRef<string | null>(null);
   const touchStartOrderRef = useRef<string[]>([]);
+  const dragLayoutRef = useRef<DragPreview["layout"] | null>(null);
 
   useEffect(() => {
     itemsRef.current = items;
@@ -62,14 +77,6 @@ export function AdminProductsTable({ products }: { products: Product[] }) {
         autoScrollFrameRef.current = null;
       }
       return;
-    }
-
-    function updatePointerPosition(event: DragEvent) {
-      dragPointerYRef.current = event.clientY;
-    }
-
-    function handleDragEnd() {
-      setDraggedId(null);
     }
 
     function tickAutoScroll() {
@@ -95,13 +102,9 @@ export function AdminProductsTable({ products }: { products: Product[] }) {
       autoScrollFrameRef.current = window.requestAnimationFrame(tickAutoScroll);
     }
 
-    document.addEventListener("dragover", updatePointerPosition);
-    document.addEventListener("dragend", handleDragEnd);
     autoScrollFrameRef.current = window.requestAnimationFrame(tickAutoScroll);
 
     return () => {
-      document.removeEventListener("dragover", updatePointerPosition);
-      document.removeEventListener("dragend", handleDragEnd);
       if (autoScrollFrameRef.current !== null) {
         cancelAnimationFrame(autoScrollFrameRef.current);
         autoScrollFrameRef.current = null;
@@ -117,7 +120,7 @@ export function AdminProductsTable({ products }: { products: Product[] }) {
     );
   }
 
-  async function persistOrder(nextItems: Product[]) {
+  async function persistOrder(nextItems: Product[], previousItems: Product[]) {
     setIsSavingOrder(true);
     setMessage(null);
 
@@ -139,31 +142,70 @@ export function AdminProductsTable({ products }: { products: Product[] }) {
       setMessage("Порядок обновлён");
     } catch (error) {
       console.error(error);
-      setItems(products);
+      itemsRef.current = previousItems;
+      setItems(previousItems);
       setMessage("Не получилось сохранить порядок");
     } finally {
       setIsSavingOrder(false);
     }
   }
 
-  function handleDrop(targetId: string) {
-    if (!draggedId) return;
-    const nextItems = reorderListByIds(items, draggedId, targetId);
-    setDraggedId(null);
-
-    if (nextItems === items) return;
-
-    setItems(nextItems);
-    void persistOrder(nextItems);
+  function getVisibleItemPositions(layout: DragPreview["layout"]) {
+    return new Map(
+      Array.from(document.querySelectorAll<HTMLElement>(`[data-sort-layout="${layout}"]`))
+        .filter((element) => element.getClientRects().length > 0)
+        .map((element) => [element.dataset.productId ?? "", element.getBoundingClientRect().top]),
+    );
   }
 
-  function handleMobilePointerDown(productId: string, event: ReactPointerEvent<HTMLDivElement>) {
+  function animateReorderedItems(
+    layout: DragPreview["layout"],
+    previousPositions: Map<string, number>,
+  ) {
+    window.requestAnimationFrame(() => {
+      document.querySelectorAll<HTMLElement>(`[data-sort-layout="${layout}"]`).forEach((element) => {
+        const productId = element.dataset.productId;
+        const previousTop = productId ? previousPositions.get(productId) : undefined;
+        if (previousTop === undefined || element.getClientRects().length === 0) return;
+
+        const offset = previousTop - element.getBoundingClientRect().top;
+        if (Math.abs(offset) < 1) return;
+
+        element.getAnimations().forEach((animation) => animation.cancel());
+        element.animate(
+          [
+            { transform: `translateY(${offset}px)` },
+            { transform: "translateY(0)" },
+          ],
+          {
+            duration: REORDER_ANIMATION_DURATION,
+            easing: "cubic-bezier(0.2, 0.8, 0.2, 1)",
+          },
+        );
+      });
+    });
+  }
+
+  function resetDragState() {
+    touchDraggedIdRef.current = null;
+    touchStartOrderRef.current = [];
+    dragLayoutRef.current = null;
+    dragPointerYRef.current = null;
+    setDragPreview(null);
+    setDraggedId(null);
+  }
+
+  function handlePointerDown(
+    productId: string,
+    layout: DragPreview["layout"],
+    event: ReactPointerEvent<HTMLButtonElement>,
+  ) {
     if (isSavingOrder) return;
 
     event.preventDefault();
     event.stopPropagation();
     event.currentTarget.setPointerCapture(event.pointerId);
-    const card = event.currentTarget.closest<HTMLElement>("[data-mobile-product-id]");
+    const card = event.currentTarget.closest<HTMLElement>("[data-product-id]");
     const cardBounds = card?.getBoundingClientRect();
 
     if (!cardBounds) return;
@@ -171,25 +213,26 @@ export function AdminProductsTable({ products }: { products: Product[] }) {
     dragPointerYRef.current = event.clientY;
     touchDraggedIdRef.current = productId;
     touchStartOrderRef.current = itemsRef.current.map((item) => item.id);
-    setMobileDragPreview({
+    dragLayoutRef.current = layout;
+    setDragPreview({
       productId,
       pointerX: event.clientX,
       pointerY: event.clientY,
-      offsetX: event.clientX - cardBounds.left,
-      offsetY: event.clientY - cardBounds.top,
       width: cardBounds.width,
+      layout,
     });
     setDraggedId(productId);
     setMessage(null);
   }
 
-  function handleMobilePointerMove(event: ReactPointerEvent<HTMLDivElement>) {
+  function handlePointerMove(event: ReactPointerEvent<HTMLButtonElement>) {
     const sourceId = touchDraggedIdRef.current;
-    if (!sourceId) return;
+    const layout = dragLayoutRef.current;
+    if (!sourceId || !layout) return;
 
     event.preventDefault();
     dragPointerYRef.current = event.clientY;
-    setMobileDragPreview((current) => current ? {
+    setDragPreview((current) => current ? {
       ...current,
       pointerX: event.clientX,
       pointerY: event.clientY,
@@ -197,32 +240,44 @@ export function AdminProductsTable({ products }: { products: Product[] }) {
 
     const targetElement = document
       .elementFromPoint(event.clientX, event.clientY)
-      ?.closest<HTMLElement>("[data-mobile-product-id]");
-    const targetId = targetElement?.dataset.mobileProductId;
+      ?.closest<HTMLElement>("[data-product-id]");
+    const targetId = targetElement?.dataset.productId;
 
     if (!targetId || targetId === sourceId) {
       return;
     }
 
+    const sourceIndex = itemsRef.current.findIndex((item) => item.id === sourceId);
+    const targetIndex = itemsRef.current.findIndex((item) => item.id === targetId);
+    if (sourceIndex === -1 || targetIndex === -1) return;
+
+    const targetBounds = targetElement.getBoundingClientRect();
+    const targetMiddle = targetBounds.top + targetBounds.height / 2;
+    const movingDown = sourceIndex < targetIndex;
+    const crossedTargetMiddle = movingDown
+      ? event.clientY > targetMiddle
+      : event.clientY < targetMiddle;
+
+    if (!crossedTargetMiddle) return;
+
+    const previousPositions = getVisibleItemPositions(layout);
     setItems((currentItems) => {
       const nextItems = reorderListByIds(currentItems, sourceId, targetId);
       itemsRef.current = nextItems;
       return nextItems;
     });
+    animateReorderedItems(layout, previousPositions);
   }
 
-  function finishMobileDrag() {
+  function finishPointerDrag() {
     const sourceId = touchDraggedIdRef.current;
     if (!sourceId) return;
 
     const initialOrder = touchStartOrderRef.current;
     const nextItems = itemsRef.current;
+    const previousItems = orderItemsByIds(nextItems, initialOrder);
 
-    touchDraggedIdRef.current = null;
-    touchStartOrderRef.current = [];
-    dragPointerYRef.current = null;
-    setMobileDragPreview(null);
-    setDraggedId(null);
+    resetDragState();
 
     const nextOrder = nextItems.map((item) => item.id);
     const hasOrderChanged =
@@ -230,14 +285,50 @@ export function AdminProductsTable({ products }: { products: Product[] }) {
       initialOrder.some((itemId, index) => itemId !== nextOrder[index]);
 
     if (hasOrderChanged) {
-      void persistOrder(nextItems);
+      void persistOrder(nextItems, previousItems);
     }
+  }
+
+  function cancelPointerDrag() {
+    if (!touchDraggedIdRef.current) return;
+
+    const previousItems = orderItemsByIds(itemsRef.current, touchStartOrderRef.current);
+    itemsRef.current = previousItems;
+    setItems(previousItems);
+    resetDragState();
+  }
+
+  function handleOrderKeyDown(productId: string, event: ReactKeyboardEvent<HTMLButtonElement>) {
+    const direction = event.key === "ArrowUp" ? -1 : event.key === "ArrowDown" ? 1 : 0;
+    if (!direction || isSavingOrder) return;
+
+    event.preventDefault();
+    const previousItems = itemsRef.current;
+    const currentIndex = previousItems.findIndex((item) => item.id === productId);
+    const targetItem = previousItems[currentIndex + direction];
+    if (!targetItem) return;
+
+    const nextItems = reorderListByIds(previousItems, productId, targetItem.id);
+    itemsRef.current = nextItems;
+    setItems(nextItems);
+    void persistOrder(nextItems, previousItems);
   }
 
   return (
     <div className="rounded-3xl bg-[#FFFFFF] shadow-lg ring-1 ring-black/5">
+      <div className="flex items-start gap-3 border-b border-[#E6AECB] bg-[#FFF9FB] px-4 py-3 text-sm text-[#54342C] first:rounded-t-3xl sm:items-center">
+        <span className="mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-white text-[#8A6A62] ring-1 ring-[#E6AECB] sm:mt-0">
+          <DragHandleIcon size={16} />
+        </span>
+        <p>
+          <span className="font-semibold">Чтобы поменять порядок,</span>{" "}
+          <span className="lg:hidden">зажмите значок справа</span>
+          <span className="hidden lg:inline">зажмите значок слева</span>
+          {" "}и ведите карточку вверх или вниз. Отпустите — изменения сохранятся.
+        </p>
+      </div>
       {message ? (
-        <div className="border-b border-[#E6AECB] px-4 py-3 text-sm font-semibold text-[#54342C]">
+        <div aria-live="polite" className="border-b border-[#E6AECB] px-4 py-3 text-sm font-semibold text-[#54342C]">
           {message}
         </div>
       ) : null}
@@ -245,9 +336,12 @@ export function AdminProductsTable({ products }: { products: Product[] }) {
         {items.map((product) => (
           <article
             key={product.id}
-            data-mobile-product-id={product.id}
-            className={`rounded-2xl bg-[#FFF9FB] p-3 ring-1 ring-[#E6AECB] transition-[opacity,transform] duration-200 ease-out ${
-              draggedId === product.id ? "scale-[0.98] opacity-20" : ""
+            data-product-id={product.id}
+            data-sort-layout="mobile"
+            className={`rounded-2xl bg-[#FFF9FB] p-3 ring-1 transition-[opacity,box-shadow] duration-150 ${
+              draggedId === product.id
+                ? "opacity-35 outline-dashed outline-2 outline-[#8A6A62] ring-[#E6AECB]"
+                : "ring-[#E6AECB]"
             }`}
           >
             <div className="flex items-center gap-3">
@@ -257,16 +351,21 @@ export function AdminProductsTable({ products }: { products: Product[] }) {
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-semibold text-[#54342C]">{product.title}</p>
               </div>
-              <div
-                onPointerDown={(event) => handleMobilePointerDown(product.id, event)}
-                onPointerMove={handleMobilePointerMove}
-                onPointerUp={finishMobileDrag}
-                onPointerCancel={finishMobileDrag}
+              <button
+                type="button"
+                onPointerDown={(event) => handlePointerDown(product.id, "mobile", event)}
+                onPointerMove={handlePointerMove}
+                onPointerUp={finishPointerDrag}
+                onPointerCancel={cancelPointerDrag}
+                onLostPointerCapture={finishPointerDrag}
+                onKeyDown={(event) => handleOrderKeyDown(product.id, event)}
                 aria-label={`Изменить порядок товара ${product.title}`}
-                className="inline-flex h-10 w-10 shrink-0 touch-none select-none items-center justify-center rounded-2xl bg-white text-[#8A6A62] ring-1 ring-[#E6AECB] active:scale-95"
+                aria-pressed={draggedId === product.id}
+                disabled={isSavingOrder}
+                className="inline-flex h-12 w-12 shrink-0 cursor-grab touch-none select-none items-center justify-center rounded-2xl bg-white text-[#8A6A62] shadow-sm ring-1 ring-[#E6AECB] transition active:cursor-grabbing active:scale-95 disabled:cursor-wait disabled:opacity-50"
               >
-                <DragHandleIcon size={16} />
-              </div>
+                <DragHandleIcon size={20} />
+              </button>
             </div>
 
             <Link
@@ -279,17 +378,23 @@ export function AdminProductsTable({ products }: { products: Product[] }) {
         ))}
       </div>
 
-      {mobileDragPreview ? (() => {
-        const product = items.find((item) => item.id === mobileDragPreview.productId);
+      {dragPreview ? (() => {
+        const product = items.find((item) => item.id === dragPreview.productId);
         if (!product) return null;
 
         return (
           <div
-            className="pointer-events-none fixed z-[100] rounded-2xl bg-[#FFF9FB] p-3 shadow-2xl ring-2 ring-[#E6AECB] lg:hidden"
-            style={{
-              left: mobileDragPreview.pointerX - mobileDragPreview.offsetX,
-              top: mobileDragPreview.pointerY - mobileDragPreview.offsetY,
-              width: mobileDragPreview.width,
+            className="pointer-events-none fixed z-[100] rounded-2xl bg-[#FFF9FB] p-3 shadow-2xl ring-2 ring-[#E6AECB]"
+            style={dragPreview.layout === "mobile" ? {
+              left: 16,
+              top: Math.max(12, dragPreview.pointerY - 40),
+              width: "calc(100vw - 32px)",
+              maxWidth: dragPreview.width,
+            } : {
+              left: dragPreview.pointerX + 18,
+              top: dragPreview.pointerY - 36,
+              width: 340,
+              maxWidth: "calc(100vw - 32px)",
             }}
           >
             <div className="flex items-center gap-3">
@@ -297,6 +402,9 @@ export function AdminProductsTable({ products }: { products: Product[] }) {
                 <img src={product.imageUrl} alt="" className="h-full w-full object-cover" />
               </div>
               <p className="min-w-0 flex-1 text-sm font-semibold text-[#54342C]">{product.title}</p>
+              {dragPreview.layout === "desktop" ? (
+                <span className="shrink-0 text-xs font-semibold text-[#8A6A62]">Перемещаем</span>
+              ) : null}
               <div className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-white text-[#8A6A62] ring-1 ring-[#E6AECB]">
                 <DragHandleIcon size={16} />
               </div>
@@ -322,22 +430,28 @@ export function AdminProductsTable({ products }: { products: Product[] }) {
             {items.map((product) => (
               <tr
                 key={product.id}
-                draggable={!isSavingOrder}
-                onDragStart={() => {
-                  setDraggedId(product.id);
-                  setMessage(null);
-                }}
-                onDragEnd={() => setDraggedId(null)}
-                onDragOver={(event) => event.preventDefault()}
-                onDrop={() => handleDrop(product.id)}
-                className={`border-b border-[#E6AECB] text-center last:border-b-0 ${
-                  draggedId === product.id ? "opacity-70" : ""
+                data-product-id={product.id}
+                data-sort-layout="desktop"
+                className={`border-b border-[#E6AECB] text-center transition-[opacity,background-color] duration-150 last:border-b-0 ${
+                  draggedId === product.id ? "bg-[#FFF4F8] opacity-35 outline-dashed outline-2 outline-[#8A6A62]" : ""
                 }`}
               >
                 <td className="px-3 py-4">
-                  <div className="inline-flex h-11 w-11 cursor-grab items-center justify-center rounded-2xl bg-[#FFF4F8] text-[#8A6A62] ring-1 ring-[#E6AECB] active:cursor-grabbing">
+                  <button
+                    type="button"
+                    onPointerDown={(event) => handlePointerDown(product.id, "desktop", event)}
+                    onPointerMove={handlePointerMove}
+                    onPointerUp={finishPointerDrag}
+                    onPointerCancel={cancelPointerDrag}
+                    onLostPointerCapture={finishPointerDrag}
+                    onKeyDown={(event) => handleOrderKeyDown(product.id, event)}
+                    aria-label={`Изменить порядок товара ${product.title}`}
+                    aria-pressed={draggedId === product.id}
+                    disabled={isSavingOrder}
+                    className="inline-flex h-11 w-11 cursor-grab touch-none select-none items-center justify-center rounded-2xl bg-[#FFF4F8] text-[#8A6A62] ring-1 ring-[#E6AECB] transition hover:bg-white hover:shadow-sm active:cursor-grabbing active:scale-95 disabled:cursor-wait disabled:opacity-50"
+                  >
                     <DragHandleIcon size={18} />
-                  </div>
+                  </button>
                 </td>
                 <td className="px-5 py-4 text-left">
                   <div className="flex items-center gap-4">
