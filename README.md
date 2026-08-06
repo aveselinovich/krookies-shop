@@ -81,6 +81,10 @@ ADMIN_EMAIL="veselinovich.a@gmail.com"
 SITE_URL="http://localhost:3000"
 RESEND_API_KEY=""
 EMAIL_FROM="KROOKIES <no-reply@your-domain.ru>"
+SMTP_USER=""
+SMTP_PASSWORD=""
+SMTP_HOST="smtp.gmail.com"
+SMTP_PORT="465"
 TELEGRAM_BOT_TOKEN=""
 TELEGRAM_WEBHOOK_SECRET=""
 DADATA_API_KEY=""
@@ -107,6 +111,10 @@ DADATA_API_KEY=""
 
 - `RESEND_API_KEY`
 - `EMAIL_FROM`
+- `SMTP_USER` — почта Gmail, с которой отправляются письма (например, `veselinovich.a@gmail.com`)
+- `SMTP_PASSWORD` — 16-значный пароль приложения Google, не обычный пароль от почты
+- `SMTP_HOST` — необязательно, по умолчанию `smtp.gmail.com`
+- `SMTP_PORT` — необязательно, по умолчанию `465`
 - `TELEGRAM_*`
 - `DADATA_API_KEY`
 
